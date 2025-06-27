@@ -1,0 +1,48 @@
+# Tunnelling & Geotechnical Engineering Workflow - Streamlit Requirements
+# ========================================================================
+
+# Core Framework
+streamlit
+
+# AI/ML Libraries
+torch
+transformers
+smolagents
+accelerate
+
+# HuggingFace Hub
+huggingface-hub
+
+# Computer Vision & Image Processing
+Pillow
+opencv-python
+
+# Document Processing
+pypdf
+openpyxl
+python-docx
+
+# Data Processing & Analysis
+pandas
+numpy
+
+# Visualization
+matplotlib
+plotly
+seaborn
+
+# Web Framework Dependencies
+requests
+python-dotenv
+
+# Additional Dependencies for Production
+watchdog
+click
+
+# Optional: Flash Attention (GPU acceleration)
+# Uncomment if deploying on GPU-enabled infrastructure
+# flash-attn>=2.5.0
+
+# Development Dependencies (Optional)
+# pytest>=7.4.0
+# jupyter>=1.0.0
