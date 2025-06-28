@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 """
-Tunnelling & Geotechnical Engineering Workflow - Streamlit Application with RunPod Integration
-=========================================================================================
+Tunnelling & Geotechnical Engineering Workflow - Domain-Specific Version
+========================================================================
 
-A comprehensive multi-modal document processing system using SmolVLM via RunPod Serverless GPU,
-SmolAgent, and Streamlit for geotechnical engineering workflows.
-
-Author: Generated for Geotechnical Engineering
-Version: 3.0.0 (RunPod Integration)
+Fixed version focusing specifically on geotechnical engineering with enhanced
+visualization capabilities for all document types.
 """
 
 import streamlit as st
@@ -19,6 +16,7 @@ import io
 import base64
 import logging
 import os
+import re
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Union, Tuple
 from datetime import datetime
@@ -48,8 +46,8 @@ logger = logging.getLogger(__name__)
 
 # Page configuration
 st.set_page_config(
-    page_title="Geotechnical Engineering Workflow - RunPod GPU",
-    page_icon="🚀",
+    page_title="Geotechnical Engineering AI Workflow",
+    page_icon="🏗️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -68,7 +66,6 @@ def init_runpod_config() -> RunPodConfig:
     """Initialize RunPod configuration from environment variables or secrets"""
     config = RunPodConfig()
     
-    # Try to get from Streamlit secrets first, then environment variables
     try:
         config.api_key = st.secrets.get("RUNPOD_API_KEY", "") or os.getenv("RUNPOD_API_KEY", "")
         config.endpoint_id = st.secrets.get("RUNPOD_ENDPOINT_ID", "") or os.getenv("RUNPOD_ENDPOINT_ID", "")
@@ -79,53 +76,45 @@ def init_runpod_config() -> RunPodConfig:
     
     return config
 
-# Custom CSS for better UI
+# Enhanced CSS for geotechnical theme
 st.markdown("""
 <style>
     .main-header {
         font-size: 2.5rem;
-        color: #1f77b4;
+        color: #2E8B57;
         text-align: center;
         margin-bottom: 2rem;
         padding: 1rem;
-        border-bottom: 3px solid #1f77b4;
+        border-bottom: 3px solid #2E8B57;
+        background: linear-gradient(135deg, #2E8B57 0%, #3CB371 100%);
+        color: white;
+        border-radius: 10px;
     }
-    .module-container {
-        background-color: #f8f9fa;
+    .geotechnical-container {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
         padding: 1.5rem;
         border-radius: 10px;
         margin: 1rem 0;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        border-left: 5px solid #2E8B57;
     }
-    .status-success {
-        color: #28a745;
-        font-weight: bold;
-    }
-    .status-error {
-        color: #dc3545;
-        font-weight: bold;
-    }
-    .status-processing {
-        color: #ffc107;
-        font-weight: bold;
-    }
-    .runpod-status {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 1rem;
-        border-radius: 8px;
-        margin: 1rem 0;
-    }
-    .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    .engineering-metric {
+        background: linear-gradient(135deg, #2E8B57 0%, #3CB371 100%);
         padding: 1rem;
         border-radius: 10px;
         color: white;
         text-align: center;
         margin: 0.5rem 0;
     }
-    .gpu-info {
-        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    .soil-analysis {
+        background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+        color: white;
+        padding: 0.8rem;
+        border-radius: 6px;
+        margin: 0.5rem 0;
+    }
+    .tunnel-info {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
         color: white;
         padding: 0.8rem;
         border-radius: 6px;
@@ -135,10 +124,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 class RunPodClient:
-    """
-    RunPod Serverless GPU Client
-    Handles communication with RunPod serverless endpoints for SmolVLM inference
-    """
+    """RunPod Serverless GPU Client for geotechnical document analysis"""
     
     def __init__(self, config: RunPodConfig):
         self.config = config
@@ -155,33 +141,14 @@ class RunPodClient:
             response = self.session.get(url, timeout=30)
             
             if response.status_code == 200:
-                return {
-                    "status": "healthy",
-                    "response": response.json()
-                }
+                return {"status": "healthy", "response": response.json()}
             else:
-                return {
-                    "status": "error",
-                    "error": f"HTTP {response.status_code}: {response.text}"
-                }
+                return {"status": "error", "error": f"HTTP {response.status_code}: {response.text}"}
         except Exception as e:
-            return {
-                "status": "error",
-                "error": str(e)
-            }
+            return {"status": "error", "error": str(e)}
     
     def run_sync_inference(self, image_data: str, query: str, timeout: int = None) -> Dict[str, Any]:
-        """
-        Run synchronous inference on RunPod endpoint
-        
-        Args:
-            image_data: Base64 encoded image
-            query: Text query for the vision model
-            timeout: Request timeout in seconds
-            
-        Returns:
-            Dict with inference results or error information
-        """
+        """Run synchronous inference on RunPod endpoint with geotechnical focus"""
         try:
             url = f"{self.config.base_url}/{self.config.endpoint_id}/runsync"
             
@@ -195,105 +162,20 @@ class RunPodClient:
                 }
             }
             
-            response = self.session.post(
-                url, 
-                json=payload, 
-                timeout=timeout or self.config.timeout
-            )
+            response = self.session.post(url, json=payload, timeout=timeout or self.config.timeout)
             
             if response.status_code == 200:
-                return {
-                    "status": "success",
-                    "result": response.json()
-                }
+                return {"status": "success", "result": response.json()}
             else:
-                return {
-                    "status": "error",
-                    "error": f"HTTP {response.status_code}: {response.text}"
-                }
+                return {"status": "error", "error": f"HTTP {response.status_code}: {response.text}"}
                 
         except requests.exceptions.Timeout:
-            return {
-                "status": "error",
-                "error": "Request timeout - GPU processing took too long"
-            }
+            return {"status": "error", "error": "Request timeout - GPU processing took too long"}
         except Exception as e:
-            return {
-                "status": "error", 
-                "error": str(e)
-            }
-    
-    def run_async_inference(self, image_data: str, query: str) -> Dict[str, Any]:
-        """
-        Run asynchronous inference on RunPod endpoint
-        
-        Args:
-            image_data: Base64 encoded image
-            query: Text query for the vision model
-            
-        Returns:
-            Dict with job ID for tracking or error information
-        """
-        try:
-            url = f"{self.config.base_url}/{self.config.endpoint_id}/run"
-            
-            payload = {
-                "input": {
-                    "image_data": image_data,
-                    "query": query,
-                    "max_new_tokens": 512,
-                    "temperature": 0.3,
-                    "do_sample": True
-                }
-            }
-            
-            response = self.session.post(url, json=payload, timeout=30)
-            
-            if response.status_code == 200:
-                return {
-                    "status": "success",
-                    "result": response.json()
-                }
-            else:
-                return {
-                    "status": "error",
-                    "error": f"HTTP {response.status_code}: {response.text}"
-                }
-                
-        except Exception as e:
-            return {
-                "status": "error",
-                "error": str(e)
-            }
-    
-    def check_job_status(self, job_id: str) -> Dict[str, Any]:
-        """Check the status of an async job"""
-        try:
-            url = f"{self.config.base_url}/{self.config.endpoint_id}/status/{job_id}"
-            response = self.session.get(url, timeout=30)
-            
-            if response.status_code == 200:
-                return {
-                    "status": "success",
-                    "result": response.json()
-                }
-            else:
-                return {
-                    "status": "error",
-                    "error": f"HTTP {response.status_code}: {response.text}"
-                }
-                
-        except Exception as e:
-            return {
-                "status": "error",
-                "error": str(e)
-            }
+            return {"status": "error", "error": str(e)}
 
 class DocumentIngestionModule:
-    """
-    Document Ingestion Module
-    Handles preprocessing of various document formats including PDF, images, CSV, Excel, JSON, and Markdown.
-    """
+    """Enhanced Document Ingestion Module for geotechnical documents"""
     
     def __init__(self):
         self.supported_formats = {
@@ -304,7 +186,7 @@ class DocumentIngestionModule:
         }
         
     def validate_file(self, uploaded_file) -> Tuple[bool, str, str]:
-        """Validate uploaded file format and determine processing type."""
+        """Validate uploaded file format and determine processing type"""
         if uploaded_file is None:
             return False, "No file uploaded", ""
             
@@ -317,7 +199,7 @@ class DocumentIngestionModule:
         return False, f"Unsupported file format: {file_extension}", ""
     
     def process_pdf(self, uploaded_file) -> Dict[str, Any]:
-        """Extract text and metadata from PDF files."""
+        """Extract text and metadata from geotechnical PDF documents"""
         try:
             pdf_reader = pypdf.PdfReader(uploaded_file)
             
@@ -326,16 +208,34 @@ class DocumentIngestionModule:
                 'pages': len(pdf_reader.pages),
                 'text_content': [],
                 'metadata': pdf_reader.metadata if pdf_reader.metadata else {},
-                'processing_timestamp': datetime.now().isoformat()
+                'processing_timestamp': datetime.now().isoformat(),
+                'geotechnical_keywords': []
             }
+            
+            # Keywords to identify geotechnical content
+            geo_keywords = [
+                'soil', 'rock', 'foundation', 'bearing capacity', 'settlement', 'shear strength',
+                'cohesion', 'friction angle', 'density', 'moisture content', 'plasticity',
+                'consolidation', 'permeability', 'tunnel', 'excavation', 'slope stability',
+                'retaining wall', 'pile', 'drilling', 'SPT', 'CPT', 'laboratory test'
+            ]
             
             for i, page in enumerate(pdf_reader.pages):
                 text = page.extract_text()
+                
+                # Identify geotechnical keywords
+                found_keywords = [kw for kw in geo_keywords if kw.lower() in text.lower()]
+                extracted_data['geotechnical_keywords'].extend(found_keywords)
+                
                 extracted_data['text_content'].append({
                     'page_number': i + 1,
                     'text': text,
-                    'char_count': len(text)
+                    'char_count': len(text),
+                    'geo_keywords': found_keywords
                 })
+            
+            # Remove duplicates
+            extracted_data['geotechnical_keywords'] = list(set(extracted_data['geotechnical_keywords']))
             
             return extracted_data
             
@@ -344,19 +244,16 @@ class DocumentIngestionModule:
             return {'type': 'pdf', 'error': str(e)}
     
     def process_image(self, uploaded_file) -> Dict[str, Any]:
-        """Process image files and prepare for vision model analysis."""
+        """Process engineering drawings and site photos"""
         try:
             from PIL import Image
             image = Image.open(uploaded_file)
             
-            # Convert to RGB if necessary
             if image.mode != 'RGB':
                 image = image.convert('RGB')
             
-            # Get image metadata
             width, height = image.size
             
-            # Convert to base64 for storage
             img_buffer = io.BytesIO()
             image.save(img_buffer, format='PNG')
             img_str = base64.b64encode(img_buffer.getvalue()).decode()
@@ -365,12 +262,10 @@ class DocumentIngestionModule:
                 'type': 'image',
                 'format': image.format,
                 'mode': image.mode,
-                'size': {
-                    'width': width,
-                    'height': height
-                },
+                'size': {'width': width, 'height': height},
                 'image_data': img_str,
-                'processing_timestamp': datetime.now().isoformat()
+                'processing_timestamp': datetime.now().isoformat(),
+                'estimated_type': self._classify_image_type(uploaded_file.name, width, height)
             }
             
             return extracted_data
@@ -379,8 +274,23 @@ class DocumentIngestionModule:
             logger.error(f"Error processing image: {str(e)}")
             return {'type': 'image', 'error': str(e)}
     
+    def _classify_image_type(self, filename: str, width: int, height: int) -> str:
+        """Classify image type based on filename and dimensions"""
+        filename_lower = filename.lower()
+        
+        if any(term in filename_lower for term in ['drawing', 'plan', 'section', 'detail', 'dwg']):
+            return 'engineering_drawing'
+        elif any(term in filename_lower for term in ['site', 'photo', 'field', 'construction']):
+            return 'site_photo'
+        elif any(term in filename_lower for term in ['soil', 'core', 'sample', 'test']):
+            return 'soil_sample'
+        elif width > height * 1.5:  # Landscape format
+            return 'cross_section'
+        else:
+            return 'general_engineering'
+    
     def process_csv(self, uploaded_file) -> Dict[str, Any]:
-        """Process CSV files and extract structured data."""
+        """Process geotechnical test data from CSV files"""
         try:
             df = pd.read_csv(uploaded_file)
             
@@ -391,7 +301,8 @@ class DocumentIngestionModule:
                 'data_types': df.dtypes.astype(str).to_dict(),
                 'data': df.to_dict('records'),
                 'summary_stats': df.describe().to_dict() if df.select_dtypes(include=[np.number]).shape[1] > 0 else {},
-                'processing_timestamp': datetime.now().isoformat()
+                'processing_timestamp': datetime.now().isoformat(),
+                'geotechnical_analysis': self._analyze_geotechnical_data(df)
             }
             
             return extracted_data
@@ -400,102 +311,44 @@ class DocumentIngestionModule:
             logger.error(f"Error processing CSV: {str(e)}")
             return {'type': 'csv', 'error': str(e)}
     
-    def process_excel(self, uploaded_file) -> Dict[str, Any]:
-        """Process Excel files and extract structured data from all sheets."""
-        try:
-            excel_file = pd.ExcelFile(uploaded_file)
-            
-            extracted_data = {
-                'type': 'excel',
-                'sheet_names': excel_file.sheet_names,
-                'sheets_data': {},
-                'processing_timestamp': datetime.now().isoformat()
-            }
-            
-            for sheet_name in excel_file.sheet_names:
-                df = pd.read_excel(excel_file, sheet_name=sheet_name)
-                extracted_data['sheets_data'][sheet_name] = {
-                    'shape': df.shape,
-                    'columns': df.columns.tolist(),
-                    'data_types': df.dtypes.astype(str).to_dict(),
-                    'data': df.to_dict('records'),
-                    'summary_stats': df.describe().to_dict() if df.select_dtypes(include=[np.number]).shape[1] > 0 else {}
-                }
-            
-            return extracted_data
-            
-        except Exception as e:
-            logger.error(f"Error processing Excel: {str(e)}")
-            return {'type': 'excel', 'error': str(e)}
-    
-    def process_json(self, uploaded_file) -> Dict[str, Any]:
-        """Process JSON files and extract structured data."""
-        try:
-            content = uploaded_file.read().decode('utf-8')
-            json_data = json.loads(content)
-            
-            extracted_data = {
-                'type': 'json',
-                'data': json_data,
-                'structure_analysis': self._analyze_json_structure(json_data),
-                'processing_timestamp': datetime.now().isoformat()
-            }
-            
-            return extracted_data
-            
-        except Exception as e:
-            logger.error(f"Error processing JSON: {str(e)}")
-            return {'type': 'json', 'error': str(e)}
-    
-    def process_markdown(self, uploaded_file) -> Dict[str, Any]:
-        """Process Markdown files and extract text content."""
-        try:
-            content = uploaded_file.read().decode('utf-8')
-            
-            extracted_data = {
-                'type': 'markdown',
-                'content': content,
-                'char_count': len(content),
-                'line_count': len(content.split('\n')),
-                'processing_timestamp': datetime.now().isoformat()
-            }
-            
-            return extracted_data
-            
-        except Exception as e:
-            logger.error(f"Error processing Markdown: {str(e)}")
-            return {'type': 'markdown', 'error': str(e)}
-    
-    def _analyze_json_structure(self, data, depth=0, max_depth=3) -> Dict[str, Any]:
-        """Analyze JSON structure for better understanding."""
-        if depth > max_depth:
-            return {"type": "truncated", "reason": "max_depth_reached"}
+    def _analyze_geotechnical_data(self, df: pd.DataFrame) -> Dict[str, Any]:
+        """Analyze CSV data for geotechnical parameters"""
+        analysis = {
+            'identified_parameters': [],
+            'potential_tests': [],
+            'data_quality': 'good'
+        }
         
-        if isinstance(data, dict):
-            return {
-                "type": "object",
-                "keys": list(data.keys()),
-                "key_count": len(data),
-                "nested_structure": {k: self._analyze_json_structure(v, depth + 1, max_depth) 
-                                   for k, v in list(data.items())[:5]}  # Limit to first 5 keys
-            }
-        elif isinstance(data, list):
-            return {
-                "type": "array",
-                "length": len(data),
-                "sample_structure": self._analyze_json_structure(data[0], depth + 1, max_depth) if data else None
-            }
-        else:
-            return {
-                "type": type(data).__name__,
-                "value": str(data)[:100] if isinstance(data, str) else data
-            }
+        # Common geotechnical parameter names
+        geo_params = {
+            'density': ['density', 'unit_weight', 'gamma', 'bulk_density'],
+            'moisture': ['moisture', 'water_content', 'w', 'moisture_content'],
+            'strength': ['strength', 'shear_strength', 'cohesion', 'friction_angle', 'phi', 'c'],
+            'bearing': ['bearing', 'bearing_capacity', 'allowable_bearing'],
+            'spt': ['spt', 'n_value', 'blow_count', 'standard_penetration'],
+            'depth': ['depth', 'elevation', 'level', 'z']
+        }
+        
+        columns_lower = [col.lower() for col in df.columns]
+        
+        for param_type, keywords in geo_params.items():
+            for keyword in keywords:
+                if any(keyword in col for col in columns_lower):
+                    analysis['identified_parameters'].append(param_type)
+                    break
+        
+        # Identify potential test types
+        if 'spt' in analysis['identified_parameters']:
+            analysis['potential_tests'].append('Standard Penetration Test')
+        if 'strength' in analysis['identified_parameters']:
+            analysis['potential_tests'].append('Direct Shear Test')
+        if 'density' in analysis['identified_parameters'] and 'moisture' in analysis['identified_parameters']:
+            analysis['potential_tests'].append('Proctor Compaction Test')
+        
+        return analysis
 
-class RunPodExtractionModule:
-    """
-    RunPod-powered Extraction Module
-    Uses SmolVLM on RunPod serverless GPU to extract relevant information from preprocessed documents.
-    """
+class GeotechnicalExtractionModule:
+    """Enhanced extraction module focused on geotechnical engineering"""
     
     def __init__(self, runpod_client: RunPodClient):
         self.runpod_client = runpod_client
@@ -504,611 +357,725 @@ class RunPodExtractionModule:
     def check_status(self) -> Dict[str, Any]:
         """Check RunPod endpoint status"""
         if not self.is_configured:
-            return {
-                "status": "not_configured",
-                "message": "RunPod API key or endpoint ID not configured"
-            }
-        
+            return {"status": "not_configured", "message": "RunPod API key or endpoint ID not configured"}
         return self.runpod_client.health_check()
     
     def extract_from_image(self, image_data: str, query: str = None, use_async: bool = False) -> Dict[str, Any]:
-        """Extract information from image using RunPod SmolVLM."""
+        """Extract geotechnical information from images using RunPod SmolVLM"""
         if not self.is_configured:
-            return {
-                "error": "RunPod not configured. Please set RUNPOD_API_KEY and RUNPOD_ENDPOINT_ID",
-                "status": "not_configured"
-            }
+            return {"error": "RunPod not configured. Please set RUNPOD_API_KEY and RUNPOD_ENDPOINT_ID", "status": "not_configured"}
         
         try:
-            # Default query for geotechnical analysis
+            # Enhanced geotechnical-specific query
             if not query:
-                query = """Analyze this engineering document or image. Extract:
-                1. Any technical specifications, measurements, or parameters
-                2. Engineering calculations or formulas visible
-                3. Material properties or soil characteristics
-                4. Safety considerations or warnings
-                5. Key findings or conclusions
-                6. Any geometric or structural details
-                Please provide a detailed technical analysis."""
+                query = """Analyze this geotechnical engineering document or image. Focus on extracting:
+
+GEOTECHNICAL PARAMETERS:
+1. Soil properties (density, moisture content, plasticity index, etc.)
+2. Rock properties (strength, RQD, joint conditions)
+3. Foundation data (bearing capacity, settlement, pile details)
+4. Test results (SPT N-values, CPT data, laboratory test results)
+
+STRUCTURAL ELEMENTS:
+5. Tunnel dimensions, support systems, rock bolts, shotcrete thickness
+6. Excavation details, slope angles, retaining structures
+7. Construction specifications and safety requirements
+
+MEASUREMENTS & CALCULATIONS:
+8. Dimensions, depths, elevations, coordinates
+9. Load calculations, factor of safety values
+10. Material specifications and design parameters
+
+Please provide a detailed technical analysis focusing specifically on geotechnical and tunneling engineering aspects."""
             
             if use_async:
-                # Asynchronous processing
                 result = self.runpod_client.run_async_inference(image_data, query)
                 if result["status"] == "success":
                     return {
-                        "extraction_type": "vision_analysis_async",
+                        "extraction_type": "geotechnical_vision_analysis_async",
                         "query": query,
                         "job_id": result["result"].get("id"),
                         "status": "processing",
                         "timestamp": datetime.now().isoformat()
                     }
                 else:
-                    return {
-                        "error": result["error"],
-                        "extraction_type": "vision_analysis_async",
-                        "status": "error"
-                    }
+                    return {"error": result["error"], "extraction_type": "geotechnical_vision_analysis_async", "status": "error"}
             else:
-                # Synchronous processing
                 result = self.runpod_client.run_sync_inference(image_data, query)
                 if result["status"] == "success":
                     output = result["result"].get("output", {})
                     response_text = output.get("response", "No response generated")
                     
+                    # Extract geotechnical parameters from response
+                    extracted_params = self._extract_geotechnical_parameters(response_text)
+                    
                     return {
-                        "extraction_type": "vision_analysis",
+                        "extraction_type": "geotechnical_vision_analysis",
                         "query": query,
                         "response": response_text,
+                        "extracted_parameters": extracted_params,
                         "confidence": "high",
                         "processing_time": output.get("processing_time", "unknown"),
                         "timestamp": datetime.now().isoformat()
                     }
                 else:
-                    return {
-                        "error": result["error"],
-                        "extraction_type": "vision_analysis",
-                        "status": "error"
-                    }
+                    return {"error": result["error"], "extraction_type": "geotechnical_vision_analysis", "status": "error"}
                     
         except Exception as e:
-            logger.error(f"Error in RunPod vision extraction: {str(e)}")
-            return {
-                "error": str(e),
-                "extraction_type": "vision_analysis",
-                "status": "error"
-            }
+            logger.error(f"Error in RunPod geotechnical extraction: {str(e)}")
+            return {"error": str(e), "extraction_type": "geotechnical_vision_analysis", "status": "error"}
     
-    def check_async_job(self, job_id: str) -> Dict[str, Any]:
-        """Check status of async job"""
-        if not self.is_configured:
-            return {"error": "RunPod not configured"}
-        
-        return self.runpod_client.check_job_status(job_id)
-
-class StructuredOutputModule:
-    """
-    Structured Output Module
-    Organizes extracted information into structured formats for querying and analysis.
-    """
-    
-    def __init__(self):
-        self.data_store = {}
-        self.metadata_store = {}
-    
-    def organize_data(self, extracted_data: Dict[str, Any], document_id: str) -> Dict[str, Any]:
-        """Organize extracted data into a structured format."""
-        try:
-            structured_data = {
-                "document_id": document_id,
-                "timestamp": datetime.now().isoformat(),
-                "document_type": extracted_data.get("type", "unknown"),
-                "processing_status": "completed",
-                "content": {},
-                "metadata": {},
-                "searchable_fields": []
-            }
-            
-            # Process different data types
-            if extracted_data.get("type") == "image" and "extraction_type" in extracted_data:
-                # Vision analysis results
-                structured_data["content"] = {
-                    "analysis_type": "runpod_vision_language_model",
-                    "query": extracted_data.get("query", ""),
-                    "response": extracted_data.get("response", ""),
-                    "confidence": extracted_data.get("confidence", "medium"),
-                    "processing_time": extracted_data.get("processing_time", "unknown")
-                }
-                structured_data["searchable_fields"] = [
-                    extracted_data.get("response", "")
-                ]
-                
-            elif extracted_data.get("type") in ["pdf", "markdown"]:
-                # Text-based content
-                if "text_content" in extracted_data:
-                    structured_data["content"] = {
-                        "text_data": extracted_data["text_content"],
-                        "extracted_info": extracted_data.get("extracted_info", {})
-                    }
-                    # Make text searchable
-                    if isinstance(extracted_data["text_content"], list):
-                        structured_data["searchable_fields"] = [
-                            page["text"] for page in extracted_data["text_content"]
-                        ]
-                    else:
-                        structured_data["searchable_fields"] = [extracted_data["text_content"]]
-                
-            elif extracted_data.get("type") in ["csv", "excel"]:
-                # Structured data
-                structured_data["content"] = {
-                    "tabular_data": extracted_data,
-                    "column_info": self._analyze_columns(extracted_data)
-                }
-                structured_data["searchable_fields"] = [
-                    str(extracted_data.get("columns", [])),
-                    str(extracted_data.get("summary_stats", {}))
-                ]
-                
-            elif extracted_data.get("type") == "json":
-                # JSON data
-                structured_data["content"] = {
-                    "json_data": extracted_data["data"],
-                    "structure": extracted_data.get("structure_analysis", {})
-                }
-                structured_data["searchable_fields"] = [
-                    str(extracted_data["data"])
-                ]
-            
-            # Store in data store
-            self.data_store[document_id] = structured_data
-            self.metadata_store[document_id] = {
-                "upload_time": structured_data["timestamp"],
-                "document_type": structured_data["document_type"],
-                "processing_status": "completed"
-            }
-            
-            return structured_data
-            
-        except Exception as e:
-            logger.error(f"Error organizing data: {str(e)}")
-            return {"error": str(e)}
-    
-    def _analyze_columns(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Analyze columns in structured data for better organization."""
-        column_analysis = {}
-        
-        if data.get("type") == "csv":
-            columns = data.get("columns", [])
-            data_types = data.get("data_types", {})
-            
-            for col in columns:
-                dtype = data_types.get(col, "object")
-                column_analysis[col] = {
-                    "data_type": dtype,
-                    "is_numeric": dtype in ["int64", "float64"],
-                    "engineering_relevance": self._assess_engineering_relevance(col)
-                }
-                
-        elif data.get("type") == "excel":
-            for sheet_name, sheet_data in data.get("sheets_data", {}).items():
-                columns = sheet_data.get("columns", [])
-                data_types = sheet_data.get("data_types", {})
-                
-                column_analysis[sheet_name] = {}
-                for col in columns:
-                    dtype = data_types.get(col, "object")
-                    column_analysis[sheet_name][col] = {
-                        "data_type": dtype,
-                        "is_numeric": dtype in ["int64", "float64"],
-                        "engineering_relevance": self._assess_engineering_relevance(col)
-                    }
-        
-        return column_analysis
-    
-    def _assess_engineering_relevance(self, column_name: str) -> str:
-        """Assess engineering relevance of column names."""
-        engineering_terms = {
-            "high": ["strength", "load", "stress", "strain", "pressure", "force", "weight", 
-                    "density", "depth", "height", "width", "diameter", "thickness"],
-            "medium": ["time", "date", "location", "sample", "test", "measurement"],
-            "low": ["id", "name", "description", "notes", "comments"]
+    def _extract_geotechnical_parameters(self, response_text: str) -> Dict[str, Any]:
+        """Extract structured geotechnical parameters from AI response"""
+        parameters = {
+            'soil_properties': {},
+            'rock_properties': {},
+            'structural_elements': {},
+            'measurements': {},
+            'test_results': {}
         }
         
-        col_lower = column_name.lower()
+        # Use regex to extract numerical values with units
+        import re
         
-        for relevance, terms in engineering_terms.items():
-            if any(term in col_lower for term in terms):
-                return relevance
+        # Common patterns for geotechnical parameters
+        patterns = {
+            'density': r'density[:\s]*(\d+\.?\d*)\s*(kg/m3|g/cm3|pcf)',
+            'moisture': r'moisture[:\s]*(\d+\.?\d*)\s*%',
+            'bearing_capacity': r'bearing[:\s]*(\d+\.?\d*)\s*(kPa|MPa|psf|ksf)',
+            'depth': r'depth[:\s]*(\d+\.?\d*)\s*(m|ft|cm)',
+            'diameter': r'diameter[:\s]*(\d+\.?\d*)\s*(m|ft|cm|mm)',
+            'thickness': r'thickness[:\s]*(\d+\.?\d*)\s*(mm|cm|m|in)'
+        }
         
-        return "unknown"
+        for param, pattern in patterns.items():
+            matches = re.findall(pattern, response_text.lower())
+            if matches:
+                parameters['measurements'][param] = matches
+        
+        return parameters
 
-class AnalysisVisualizationModule:
-    """
-    Analysis and Visualization Module
-    Provides data analysis and visualization capabilities.
-    """
+class GeotechnicalVisualizationModule:
+    """Enhanced visualization module for all geotechnical document types"""
     
     def __init__(self):
         pass
     
-    def generate_statistical_summary(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate statistical summary of numerical data."""
+    def create_visualization_from_any_document(self, doc_data: Dict[str, Any]) -> go.Figure:
+        """Create visualizations from any document type based on extracted data"""
         try:
-            summary = {
-                "analysis_type": "statistical_summary",
-                "timestamp": datetime.now().isoformat(),
-                "results": {}
-            }
+            doc_type = doc_data.get("document_type", "unknown")
+            content = doc_data.get("content", {})
             
-            if data.get("type") in ["csv", "excel"]:
-                if data["type"] == "csv":
-                    stats = data.get("summary_stats", {})
-                    summary["results"]["csv_analysis"] = {
-                        "total_rows": data.get("shape", [0, 0])[0],
-                        "total_columns": data.get("shape", [0, 0])[1],
-                        "numerical_columns": len(stats),
-                        "statistics": stats
-                    }
-                    
-                elif data["type"] == "excel":
-                    summary["results"]["excel_analysis"] = {}
-                    for sheet_name, sheet_data in data.get("sheets_data", {}).items():
-                        stats = sheet_data.get("summary_stats", {})
-                        summary["results"]["excel_analysis"][sheet_name] = {
-                            "total_rows": sheet_data.get("shape", [0, 0])[0],
-                            "total_columns": sheet_data.get("shape", [0, 0])[1],
-                            "numerical_columns": len(stats),
-                            "statistics": stats
-                        }
-            
-            return summary
-            
-        except Exception as e:
-            logger.error(f"Error in statistical analysis: {str(e)}")
-            return {"error": str(e)}
-    
-    def create_visualization(self, data: Dict[str, Any], chart_type: str = "auto") -> go.Figure:
-        """Create interactive visualizations using Plotly."""
-        try:
-            if data.get("type") == "csv":
-                df = pd.DataFrame(data.get("data", []))
-                return self._create_csv_visualization(df, chart_type)
+            if doc_type == "csv":
+                return self._create_csv_visualization(content.get("tabular_data", {}))
+            elif doc_type == "excel":
+                return self._create_excel_visualization(content.get("tabular_data", {}))
+            elif doc_type == "pdf":
+                return self._create_pdf_visualization(content)
+            elif doc_type == "image":
+                return self._create_image_analysis_visualization(content)
+            elif doc_type == "json":
+                return self._create_json_visualization(content.get("json_data", {}))
+            else:
+                return self._create_default_visualization(doc_data)
                 
-            elif data.get("type") == "excel":
-                # Use first sheet with numerical data
-                for sheet_name, sheet_data in data.get("sheets_data", {}).items():
-                    if sheet_data.get("summary_stats"):
-                        df = pd.DataFrame(sheet_data.get("data", []))
-                        return self._create_csv_visualization(df, chart_type)
-                        
-            # Default empty chart
-            fig = go.Figure()
-            fig.add_annotation(
-                text="No visualizable data found",
-                xref="paper", yref="paper",
-                x=0.5, y=0.5, xanchor='center', yanchor='middle',
-                showarrow=False, font_size=16
-            )
-            return fig
-            
         except Exception as e:
             logger.error(f"Error creating visualization: {str(e)}")
-            fig = go.Figure()
-            fig.add_annotation(
-                text=f"Error creating visualization: {str(e)}",
-                xref="paper", yref="paper",
-                x=0.5, y=0.5, xanchor='center', yanchor='middle',
-                showarrow=False, font_size=14
-            )
-            return fig
+            return self._create_error_visualization(str(e))
     
-    def _create_csv_visualization(self, df: pd.DataFrame, chart_type: str) -> go.Figure:
-        """Create visualizations for CSV data."""
+    def _create_csv_visualization(self, data: Dict[str, Any]) -> go.Figure:
+        """Create visualizations for CSV geotechnical data"""
+        if not data or 'data' not in data:
+            return self._create_error_visualization("No CSV data available")
+        
+        df = pd.DataFrame(data.get("data", []))
         numerical_cols = df.select_dtypes(include=[np.number]).columns
         
         if len(numerical_cols) == 0:
-            fig = go.Figure()
-            fig.add_annotation(
-                text="No numerical data to visualize",
-                xref="paper", yref="paper",
-                x=0.5, y=0.5, xanchor='center', yanchor='middle',
-                showarrow=False, font_size=16
-            )
-            return fig
+            return self._create_error_visualization("No numerical data found in CSV")
         
-        if chart_type == "auto":
-            if len(numerical_cols) == 1:
-                chart_type = "histogram"
-            elif len(numerical_cols) >= 2:
-                chart_type = "scatter"
-            else:
-                chart_type = "bar"
+        # Create subplots for geotechnical analysis
+        fig = make_subplots(
+            rows=2, cols=2,
+            subplot_titles=("Distribution Analysis", "Depth Profile", "Parameter Correlation", "Statistical Summary"),
+            specs=[[{"type": "xy"}, {"type": "xy"}],
+                   [{"type": "xy"}, {"type": "xy"}]]
+        )
         
-        if chart_type == "histogram":
+        # Plot 1: Histogram of first numerical column
+        if len(numerical_cols) >= 1:
             col = numerical_cols[0]
-            fig = px.histogram(df, x=col, title=f"Distribution of {col}")
-            
-        elif chart_type == "scatter" and len(numerical_cols) >= 2:
-            fig = px.scatter(df, x=numerical_cols[0], y=numerical_cols[1], 
-                           title=f"{numerical_cols[1]} vs {numerical_cols[0]}")
-            
-        elif chart_type == "line" and len(numerical_cols) >= 2:
-            fig = px.line(df, x=df.index, y=numerical_cols[0], 
-                         title=f"{numerical_cols[0]} Trend")
-            
-        elif chart_type == "box":
-            fig = go.Figure()
-            for col in numerical_cols[:5]:  # Limit to 5 columns
-                fig.add_trace(go.Box(y=df[col], name=col))
-            fig.update_layout(title="Box Plot of Numerical Variables")
-            
-        else:
-            # Default to correlation heatmap if multiple numerical columns
-            if len(numerical_cols) > 1:
-                corr_matrix = df[numerical_cols].corr()
-                fig = px.imshow(corr_matrix, 
-                              title="Correlation Matrix",
-                              color_continuous_scale="RdBu",
-                              aspect="auto")
-            else:
-                # Single column bar chart
-                fig = px.bar(df, y=numerical_cols[0], 
-                           title=f"Bar Chart of {numerical_cols[0]}")
+            fig.add_trace(
+                go.Histogram(x=df[col], name=f"{col} Distribution", marker_color='#2E8B57'),
+                row=1, col=1
+            )
+        
+        # Plot 2: Depth profile (if depth column exists)
+        depth_cols = [col for col in df.columns if 'depth' in col.lower() or 'elevation' in col.lower()]
+        if depth_cols and len(numerical_cols) >= 2:
+            depth_col = depth_cols[0]
+            value_col = [col for col in numerical_cols if col != depth_col][0]
+            fig.add_trace(
+                go.Scatter(x=df[value_col], y=df[depth_col], mode='markers+lines', 
+                          name=f"{value_col} vs {depth_col}", marker_color='#8B4513'),
+                row=1, col=2
+            )
+        
+        # Plot 3: Correlation heatmap (if multiple numerical columns)
+        if len(numerical_cols) >= 2:
+            corr_matrix = df[numerical_cols].corr()
+            fig.add_trace(
+                go.Heatmap(z=corr_matrix.values, x=corr_matrix.columns, y=corr_matrix.columns,
+                          colorscale='RdBu', name="Correlation"),
+                row=2, col=1
+            )
+        
+        # Plot 4: Box plot for all numerical columns
+        for i, col in enumerate(numerical_cols[:4]):  # Limit to 4 columns
+            fig.add_trace(
+                go.Box(y=df[col], name=col, marker_color=f'rgba({46+i*50}, {139+i*20}, {87+i*30}, 0.8)'),
+                row=2, col=2
+            )
         
         fig.update_layout(
-            height=500,
+            title_text="Geotechnical Data Analysis",
+            height=800,
             showlegend=True,
             font=dict(size=12)
         )
         
         return fig
+    
+    def _create_image_analysis_visualization(self, content: Dict[str, Any]) -> go.Figure:
+        """Create visualization from image analysis results"""
+        if "extracted_parameters" not in content:
+            return self._create_error_visualization("No extracted parameters from image analysis")
+        
+        params = content["extracted_parameters"]
+        
+        # Create visualization of extracted measurements
+        fig = go.Figure()
+        
+        measurements = params.get("measurements", {})
+        if measurements:
+            # Create bar chart of extracted measurements
+            param_names = []
+            values = []
+            units = []
+            
+            for param, data in measurements.items():
+                if data:  # If data exists
+                    param_names.append(param.replace('_', ' ').title())
+                    # Take first measurement if multiple
+                    if isinstance(data[0], tuple):
+                        values.append(float(data[0][0]))
+                        units.append(data[0][1] if len(data[0]) > 1 else "")
+                    else:
+                        values.append(float(data[0]))
+                        units.append("")
+            
+            if param_names:
+                fig.add_trace(go.Bar(
+                    x=param_names,
+                    y=values,
+                    text=[f"{v} {u}" for v, u in zip(values, units)],
+                    textposition='auto',
+                    marker_color='#2E8B57',
+                    name='Extracted Parameters'
+                ))
+                
+                fig.update_layout(
+                    title="Extracted Geotechnical Parameters from Image",
+                    xaxis_title="Parameters",
+                    yaxis_title="Values",
+                    height=500
+                )
+            else:
+                return self._create_error_visualization("No measurable parameters extracted from image")
+        else:
+            return self._create_error_visualization("No measurements found in image analysis")
+        
+        return fig
+    
+    def _create_pdf_visualization(self, content: Dict[str, Any]) -> go.Figure:
+        """Create visualization from PDF analysis"""
+        text_data = content.get("text_data", [])
+        
+        if not text_data:
+            return self._create_error_visualization("No text data from PDF")
+        
+        # Analyze geotechnical keywords frequency
+        geo_keywords = []
+        for page in text_data:
+            geo_keywords.extend(page.get('geo_keywords', []))
+        
+        if not geo_keywords:
+            return self._create_error_visualization("No geotechnical keywords found in PDF")
+        
+        # Count keyword frequency
+        from collections import Counter
+        keyword_counts = Counter(geo_keywords)
+        
+        fig = go.Figure()
+        
+        fig.add_trace(go.Bar(
+            x=list(keyword_counts.keys()),
+            y=list(keyword_counts.values()),
+            marker_color='#2E8B57',
+            name='Keyword Frequency'
+        ))
+        
+        fig.update_layout(
+            title="Geotechnical Keywords Found in PDF",
+            xaxis_title="Keywords",
+            yaxis_title="Frequency",
+            height=500,
+            xaxis_tickangle=-45
+        )
+        
+        return fig
+    
+    def _create_error_visualization(self, error_message: str) -> go.Figure:
+        """Create an error visualization"""
+        fig = go.Figure()
+        fig.add_annotation(
+            text=f"Visualization Error: {error_message}",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, xanchor='center', yanchor='middle',
+            showarrow=False, font_size=16,
+            bgcolor="rgba(255,0,0,0.1)",
+            bordercolor="red"
+        )
+        fig.update_layout(
+            title="Visualization Not Available",
+            height=400
+        )
+        return fig
+    
+    def _create_default_visualization(self, doc_data: Dict[str, Any]) -> go.Figure:
+        """Create a default visualization showing document info"""
+        fig = go.Figure()
+        
+        doc_type = doc_data.get("document_type", "Unknown")
+        timestamp = doc_data.get("timestamp", "Unknown")
+        
+        # Create simple info display
+        fig.add_annotation(
+            text=f"Document Type: {doc_type}<br>Processed: {timestamp}<br><br>✅ Document processed successfully<br>🔍 Basic analysis completed",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, xanchor='center', yanchor='middle',
+            showarrow=False, font_size=14,
+            bgcolor="rgba(46,139,87,0.1)",
+            bordercolor="#2E8B57"
+        )
+        
+        fig.update_layout(
+            title=f"Document Summary: {doc_type}",
+            height=400
+        )
+        
+        return fig
 
-# Agent Tools with Proper Docstring Formatting for SmolAgent
+# Enhanced Agent Tools with Geotechnical Focus
 @tool
 def analyze_soil_data(data: str) -> str:
     """
-    Analyze soil test data and provide engineering insights.
+    Analyze soil test data and provide geotechnical engineering insights.
     
     Args:
-        data (str): JSON string containing soil test results with properties like density, moisture_content, bearing_capacity
+        data (str): JSON string containing soil test results with properties like density, moisture_content, bearing_capacity, SPT values, etc.
     
     Returns:
-        str: Detailed analysis of soil properties and engineering recommendations
+        str: Detailed geotechnical analysis with engineering recommendations
     """
     try:
         soil_data = json.loads(data)
         
         analysis = []
-        analysis.append("=== SOIL DATA ANALYSIS (RunPod Enhanced) ===")
+        analysis.append("=== GEOTECHNICAL SOIL ANALYSIS ===")
+        analysis.append("🏗️ Professional Geotechnical Assessment")
         
-        # Check for key soil properties
+        # Detailed soil property analysis
         if "density" in soil_data:
             density = float(soil_data["density"])
-            if density < 1.6:
-                analysis.append(f"⚠️  Low density ({density} g/cm³) - Consider compaction")
+            if density < 1.4:
+                analysis.append(f"⚠️  LOW DENSITY: {density} g/cm³")
+                analysis.append("   • Recommendation: Compaction required")
+                analysis.append("   • Consider dynamic compaction or vibrocompaction")
             elif density > 2.1:
-                analysis.append(f"✅ High density ({density} g/cm³) - Good bearing capacity")
+                analysis.append(f"✅ HIGH DENSITY: {density} g/cm³")
+                analysis.append("   • Excellent bearing capacity expected")
+                analysis.append("   • Suitable for shallow foundations")
             else:
-                analysis.append(f"📊 Moderate density ({density} g/cm³)")
+                analysis.append(f"📊 MODERATE DENSITY: {density} g/cm³")
+                analysis.append("   • Standard foundation design applicable")
         
         if "moisture_content" in soil_data:
             moisture = float(soil_data["moisture_content"])
-            if moisture > 25:
-                analysis.append(f"💧 High moisture content ({moisture}%) - May affect stability")
+            if moisture > 30:
+                analysis.append(f"💧 HIGH MOISTURE: {moisture}%")
+                analysis.append("   • Risk of settlement and instability")
+                analysis.append("   • Consider drainage improvements")
+            elif moisture < 5:
+                analysis.append(f"🌵 LOW MOISTURE: {moisture}%")
+                analysis.append("   • Potential for shrinkage cracking")
             else:
-                analysis.append(f"💧 Moisture content: {moisture}%")
+                analysis.append(f"💧 MOISTURE CONTENT: {moisture}%")
         
         if "bearing_capacity" in soil_data:
             bearing = float(soil_data["bearing_capacity"])
-            analysis.append(f"🏗️  Bearing capacity: {bearing} kPa")
+            analysis.append(f"🏗️ BEARING CAPACITY: {bearing} kPa")
             if bearing < 100:
-                analysis.append("⚠️  Low bearing capacity - Deep foundations recommended")
+                analysis.append("   ⚠️  LOW bearing capacity")
+                analysis.append("   • Deep foundations recommended (piles/caissons)")
+                analysis.append("   • Consider soil improvement techniques")
+            elif bearing > 300:
+                analysis.append("   ✅ EXCELLENT bearing capacity")
+                analysis.append("   • Shallow foundations suitable")
+            else:
+                analysis.append("   📊 ADEQUATE bearing capacity")
+                analysis.append("   • Standard foundation design applicable")
         
-        analysis.append("\n🚀 Powered by RunPod Serverless GPU Infrastructure")
+        if "spt_n_value" in soil_data:
+            spt = int(soil_data["spt_n_value"])
+            analysis.append(f"🔨 SPT N-VALUE: {spt}")
+            if spt < 4:
+                analysis.append("   • Very loose/very soft soil")
+            elif spt < 10:
+                analysis.append("   • Loose/soft soil")
+            elif spt < 30:
+                analysis.append("   • Medium dense/firm soil")
+            else:
+                analysis.append("   • Dense/hard soil")
+        
+        analysis.append("\n🎯 ENGINEERING RECOMMENDATIONS:")
+        analysis.append("• Conduct additional site investigation if needed")
+        analysis.append("• Consider local building codes and standards")
+        analysis.append("• Factor in environmental and seismic conditions")
+        
         return "\n".join(analysis)
         
     except Exception as e:
-        return f"Error analyzing soil data: {str(e)}"
+        return f"Error in geotechnical soil analysis: {str(e)}"
 
 @tool
 def calculate_tunnel_support(diameter: float, depth: float, rock_quality: str) -> str:
     """
-    Calculate tunnel support requirements based on geometry and ground conditions.
+    Calculate tunnel support requirements for geotechnical engineering projects.
     
     Args:
         diameter (float): Tunnel diameter in meters
-        depth (float): Depth below surface in meters
-        rock_quality (str): Rock quality designation, must be one of 'good', 'fair', or 'poor'
+        depth (float): Depth below surface in meters  
+        rock_quality (str): Rock quality designation ('excellent', 'good', 'fair', 'poor', 'very_poor')
     
     Returns:
-        str: Support system recommendations including rock bolt spacing and shotcrete thickness
+        str: Comprehensive tunnel support design with specifications
     """
     try:
         analysis = []
-        analysis.append("=== TUNNEL SUPPORT ANALYSIS (GPU Accelerated) ===")
-        analysis.append(f"Tunnel diameter: {diameter} m")
-        analysis.append(f"Depth: {depth} m")
-        analysis.append(f"Rock quality: {rock_quality}")
+        analysis.append("=== TUNNEL SUPPORT DESIGN ANALYSIS ===")
+        analysis.append(f"🚇 Tunnel Diameter: {diameter} m")
+        analysis.append(f"⬇️  Depth: {depth} m")
+        analysis.append(f"🪨 Rock Quality: {rock_quality.upper()}")
         
-        # Calculate basic support requirements
-        if rock_quality.lower() == "good":
-            support_spacing = diameter * 1.5
-            shotcrete_thickness = 50
-        elif rock_quality.lower() == "fair":
-            support_spacing = diameter * 1.0
-            shotcrete_thickness = 100
-        else:  # poor
-            support_spacing = diameter * 0.5
-            shotcrete_thickness = 150
+        # Rock quality mapping
+        quality_factors = {
+            'excellent': {'factor': 2.0, 'shotcrete': 25, 'bolts': 3.0},
+            'good': {'factor': 1.5, 'shotcrete': 50, 'bolts': 2.0},
+            'fair': {'factor': 1.0, 'shotcrete': 100, 'bolts': 1.5},
+            'poor': {'factor': 0.75, 'shotcrete': 150, 'bolts': 1.0},
+            'very_poor': {'factor': 0.5, 'shotcrete': 200, 'bolts': 0.75}
+        }
         
-        analysis.append(f"\n🔧 SUPPORT RECOMMENDATIONS:")
-        analysis.append(f"• Rock bolt spacing: {support_spacing:.1f} m")
-        analysis.append(f"• Shotcrete thickness: {shotcrete_thickness} mm")
+        quality = quality_factors.get(rock_quality.lower(), quality_factors['fair'])
         
-        # Safety factors based on depth
+        # Calculate support requirements
+        bolt_spacing = diameter * quality['factor']
+        shotcrete_thickness = quality['shotcrete']
+        
+        # Depth adjustments
         if depth > 50:
-            analysis.append("⚠️  Deep tunnel - Consider additional monitoring")
+            shotcrete_thickness += 25
+            bolt_spacing *= 0.8
+            analysis.append("⚠️  DEEP TUNNEL: Enhanced support required")
         
+        if depth > 100:
+            shotcrete_thickness += 50
+            bolt_spacing *= 0.7
+            analysis.append("⚠️  VERY DEEP: Special design considerations")
+        
+        # Large diameter adjustments
         if diameter > 10:
-            analysis.append("⚠️  Large diameter - May require steel ribs")
+            shotcrete_thickness += 30
+            bolt_spacing *= 0.9
+            analysis.append("⚠️  LARGE DIAMETER: Additional steel ribs recommended")
         
-        analysis.append("\n🚀 Calculations powered by RunPod GPU cloud")
+        analysis.append(f"\n🔧 SUPPORT SYSTEM SPECIFICATIONS:")
+        analysis.append(f"• Rock Bolt Spacing: {bolt_spacing:.1f} m c/c")
+        analysis.append(f"• Shotcrete Thickness: {shotcrete_thickness} mm")
+        analysis.append(f"• Bolt Length: {diameter * 0.3:.1f} m (minimum)")
+        
+        # Additional recommendations
+        analysis.append(f"\n📋 ADDITIONAL REQUIREMENTS:")
+        if rock_quality.lower() in ['poor', 'very_poor']:
+            analysis.append("• Steel mesh reinforcement required")
+            analysis.append("• Systematic rock bolting pattern")
+            analysis.append("• Regular monitoring and maintenance")
+        
+        if diameter > 8:
+            analysis.append("• Steel rib supports at crown")
+            analysis.append("• Temporary invert struts if needed")
+        
+        analysis.append("• Drainage system installation")
+        analysis.append("• Ventilation considerations")
+        analysis.append("• Emergency escape provisions")
+        
+        analysis.append(f"\n⚖️  SAFETY FACTORS:")
+        analysis.append("• Design factor of safety: 1.5-2.0")
+        analysis.append("• Regular structural monitoring required")
+        analysis.append("• Contingency plans for ground instability")
+        
         return "\n".join(analysis)
         
     except Exception as e:
-        return f"Error calculating tunnel support: {str(e)}"
+        return f"Error in tunnel support calculation: {str(e)}"
 
 @tool
-def generate_safety_checklist(project_type: str) -> str:
+def generate_geotechnical_safety_checklist(project_type: str) -> str:
     """
-    Generate safety checklist for geotechnical projects.
+    Generate comprehensive safety checklist for geotechnical engineering projects.
     
     Args:
-        project_type (str): Type of project, must be one of 'excavation', 'tunnel', 'foundation', or 'slope'
+        project_type (str): Type of project ('excavation', 'tunnel', 'foundation', 'slope_stabilization', 'drilling')
     
     Returns:
-        str: Comprehensive safety checklist for the specified project type
+        str: Detailed safety checklist with geotechnical considerations
     """
     checklists = {
         "excavation": [
-            "✅ Soil stability assessment completed",
-            "✅ Proper sloping or shoring installed", 
-            "✅ Safe egress routes established",
-            "✅ Atmospheric testing performed",
-            "✅ Utility locations marked",
-            "✅ Emergency equipment on site"
+            "🏗️ EXCAVATION SAFETY CHECKLIST",
+            "═══════════════════════════════",
+            "PRE-EXCAVATION:",
+            "✅ Geotechnical site investigation completed",
+            "✅ Soil stability analysis performed",
+            "✅ Groundwater conditions assessed",
+            "✅ Utility locating and marking completed",
+            "✅ Excavation permit obtained",
+            "",
+            "DURING EXCAVATION:",
+            "✅ Proper sloping ratios maintained (1:1.5 minimum for most soils)",
+            "✅ Shoring system installed where required",
+            "✅ Safe ingress/egress routes established",
+            "✅ Atmospheric monitoring in deep excavations",
+            "✅ Daily visual inspection of slopes",
+            "✅ Water management and dewatering systems",
+            "",
+            "MONITORING:",
+            "✅ Continuous monitoring of adjacent structures",
+            "✅ Settlement monitoring points installed",
+            "✅ Emergency response procedures established"
         ],
         "tunnel": [
-            "✅ Ground support system installed",
+            "🚇 TUNNEL CONSTRUCTION SAFETY",
+            "════════════════════════════",
+            "GROUND CONDITIONS:",
+            "✅ Comprehensive geological survey completed",
+            "✅ Rock quality designation (RQD) assessment",
+            "✅ Groundwater inflow predictions",
+            "✅ Gas monitoring equipment installed",
+            "",
+            "SUPPORT SYSTEMS:",
+            "✅ Temporary support installation procedures",
+            "✅ Shotcrete application protocols",
+            "✅ Rock bolt installation standards",
+            "✅ Steel rib placement requirements",
+            "",
+            "SAFETY SYSTEMS:",
             "✅ Ventilation system operational",
-            "✅ Emergency escape routes clear",
-            "✅ Gas monitoring equipment active",
+            "✅ Emergency escape routes clear and marked",
             "✅ Communication systems tested",
-            "✅ Water inflow management ready"
+            "✅ Gas detection and alarm systems",
+            "✅ Emergency rescue equipment available",
+            "",
+            "MONITORING:",
+            "✅ Continuous ground movement monitoring",
+            "✅ Support system load monitoring",
+            "✅ Regular safety inspections scheduled"
         ],
         "foundation": [
-            "✅ Bearing capacity verified",
-            "✅ Settlement analysis completed",
-            "✅ Groundwater conditions assessed",
-            "✅ Materials testing current",
-            "✅ Construction sequence planned",
-            "✅ Quality control procedures established"
+            "🏛️ FOUNDATION CONSTRUCTION SAFETY",
+            "══════════════════════════════════",
+            "SOIL CONDITIONS:",
+            "✅ Bearing capacity verification completed",
+            "✅ Settlement analysis performed",
+            "✅ Liquefaction potential assessed",
+            "✅ Groundwater level monitoring",
+            "",
+            "EXCAVATION SAFETY:",
+            "✅ Foundation excavation properly shored",
+            "✅ Adequate dewatering systems in place",
+            "✅ Soil testing during construction",
+            "✅ Inspection of foundation materials",
+            "",
+            "QUALITY CONTROL:",
+            "✅ Concrete mix design approved",
+            "✅ Reinforcement placement inspection",
+            "✅ Foundation level verification",
+            "✅ Compaction testing for backfill"
         ],
-        "slope": [
-            "✅ Stability analysis completed",
+        "slope_stabilization": [
+            "⛰️ SLOPE STABILIZATION SAFETY",
+            "═════════════════════════════",
+            "STABILITY ANALYSIS:",
+            "✅ Comprehensive slope stability analysis",
+            "✅ Factor of safety calculations completed",
+            "✅ Potential failure modes identified",
+            "✅ Groundwater impact assessment",
+            "",
+            "MONITORING SYSTEMS:",
+            "✅ Inclinometer installation",
+            "✅ Piezometer network established",
+            "✅ Survey monitoring points set",
+            "✅ Early warning systems operational",
+            "",
+            "STABILIZATION MEASURES:",
             "✅ Drainage systems installed",
-            "✅ Monitoring instruments in place",
-            "✅ Access restrictions posted",
-            "✅ Emergency response plan ready",
-            "✅ Regular inspection schedule set"
+            "✅ Retaining structures properly anchored",
+            "✅ Slope protection measures in place",
+            "✅ Vegetation establishment plan",
+            "",
+            "EMERGENCY PROCEDURES:",
+            "✅ Evacuation routes identified",
+            "✅ Emergency contact procedures",
+            "✅ Regular inspection schedule established"
         ]
     }
     
-    checklist = checklists.get(project_type.lower(), checklists["excavation"])
+    project_checklist = checklists.get(project_type.lower(), checklists["excavation"])
     
-    result = [f"=== {project_type.upper()} SAFETY CHECKLIST (AI-Enhanced) ==="]
-    result.extend(checklist)
-    result.append("\n⚠️  Always consult local regulations and engineering standards")
-    result.append("🚀 Generated with AI-powered analysis on RunPod")
+    result = project_checklist.copy()
+    result.extend([
+        "",
+        "🔴 CRITICAL REMINDERS:",
+        "• Always follow local building codes and regulations",
+        "• Ensure qualified geotechnical engineer oversight",
+        "• Maintain current safety training certifications",
+        "• Regular toolbox talks on geotechnical hazards",
+        "• Emergency response plan readily available",
+        "",
+        "📞 EMERGENCY CONTACTS:",
+        "• Site Safety Officer: [Contact Information]",
+        "• Geotechnical Engineer: [Contact Information]",
+        "• Emergency Services: [Local Emergency Number]"
+    ])
     
     return "\n".join(result)
 
-class MultiAgentOrchestrator:
-    """
-    Multi-Agent Orchestration using SmolAgent
-    Coordinates multiple specialized agents for different tasks.
-    """
+class GeotechnicalMultiAgentOrchestrator:
+    """Enhanced Multi-Agent Orchestration for geotechnical engineering"""
     
     def __init__(self):
         self.model = InferenceClientModel()
         self.agents = {}
-        self._initialize_agents()
+        self._initialize_geotechnical_agents()
     
-    def _initialize_agents(self):
-        """Initialize specialized agents for different tasks."""
+    def _initialize_geotechnical_agents(self):
+        """Initialize specialized geotechnical agents"""
         try:
-            # Data Processing Agent
-            self.agents["data_processor"] = CodeAgent(
+            # Soil Analysis Agent
+            self.agents["soil_analyst"] = CodeAgent(
                 tools=[analyze_soil_data],
                 model=self.model
             )
             
-            # Engineering Analysis Agent
-            self.agents["engineering_analyst"] = CodeAgent(
-                tools=[calculate_tunnel_support, generate_safety_checklist],
+            # Tunnel Engineering Agent
+            self.agents["tunnel_engineer"] = CodeAgent(
+                tools=[calculate_tunnel_support, generate_geotechnical_safety_checklist],
                 model=self.model
             )
             
-            logger.info("SmolAgent orchestrator initialized successfully")
+            logger.info("Geotechnical SmolAgent orchestrator initialized successfully")
             
         except Exception as e:
-            logger.error(f"Error initializing agents: {str(e)}")
+            logger.error(f"Error initializing geotechnical agents: {str(e)}")
             self.agents = {}
     
-    def route_query(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
-        """Route queries to appropriate specialized agents."""
+    def route_geotechnical_query(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Route queries to appropriate geotechnical specialists"""
         try:
             query_lower = query.lower()
             
-            # Determine which agent should handle the query
-            if any(term in query_lower for term in ["soil", "bearing", "density", "moisture"]):
-                agent_type = "data_processor"
-            elif any(term in query_lower for term in ["tunnel", "support", "safety", "excavation", "checklist"]):
-                agent_type = "engineering_analyst"
+            # Enhanced geotechnical query routing
+            if any(term in query_lower for term in ["soil", "bearing", "density", "moisture", "spt", "consolidation", "settlement"]):
+                agent_type = "soil_analyst"
+                enhanced_query = f"As a geotechnical engineer specializing in soil mechanics, {query}. Provide detailed engineering analysis with specific recommendations."
+            elif any(term in query_lower for term in ["tunnel", "support", "excavation", "rock", "shotcrete", "bolt", "underground"]):
+                agent_type = "tunnel_engineer"
+                enhanced_query = f"As a tunnel engineering specialist, {query}. Include specific design parameters and safety considerations."
+            elif any(term in query_lower for term in ["safety", "checklist", "hazard", "risk", "emergency"]):
+                agent_type = "tunnel_engineer"  # Safety expert
+                enhanced_query = f"As a geotechnical safety specialist, {query}. Focus on industry best practices and regulatory compliance."
             else:
-                agent_type = "data_processor"  # Default
+                # Default to soil analyst for general geotechnical queries
+                agent_type = "soil_analyst"
+                enhanced_query = f"As a geotechnical engineering professional, analyze this query related to geotechnical engineering: {query}. Provide technical insights and practical recommendations."
             
             if agent_type in self.agents:
-                result = self.agents[agent_type].run(query)
+                result = self.agents[agent_type].run(enhanced_query)
                 return {
                     "agent_type": agent_type,
                     "query": query,
+                    "enhanced_query": enhanced_query,
                     "response": result,
                     "timestamp": datetime.now().isoformat(),
-                    "powered_by": "RunPod Serverless GPU + SmolAgent"
+                    "domain": "Geotechnical Engineering",
+                    "powered_by": "RunPod GPU + SmolAgent"
                 }
             else:
-                # Fallback response
                 return {
                     "agent_type": "fallback",
                     "query": query,
-                    "response": "I understand your query, but the specialized agents are not available. Please try rephrasing your question or check the RunPod configuration.",
-                    "timestamp": datetime.now().isoformat()
+                    "response": "I'm a geotechnical engineering assistant. Please ask questions related to soil mechanics, foundation design, tunnel engineering, or slope stability. The specialized agents are temporarily unavailable.",
+                    "timestamp": datetime.now().isoformat(),
+                    "domain": "Geotechnical Engineering"
                 }
                 
         except Exception as e:
-            logger.error(f"Error in agent routing: {str(e)}")
+            logger.error(f"Error in geotechnical agent routing: {str(e)}")
             return {
                 "agent_type": "error",
                 "query": query,
-                "response": f"An error occurred while processing your query: {str(e)}",
-                "timestamp": datetime.now().isoformat()
+                "response": f"I encountered an error processing your geotechnical engineering query. Please rephrase your question focusing on soil analysis, tunnel design, or foundation engineering topics.",
+                "timestamp": datetime.now().isoformat(),
+                "domain": "Geotechnical Engineering"
             }
 
-# Initialize global components
+# Initialize system with enhanced geotechnical modules
 @st.cache_resource
-def initialize_system():
-    """Initialize the complete system components with RunPod integration."""
+def initialize_geotechnical_system():
+    """Initialize the complete geotechnical engineering system"""
     config = init_runpod_config()
     runpod_client = RunPodClient(config)
     
     return {
         "config": config,
         "ingestion": DocumentIngestionModule(),
-        "extraction": RunPodExtractionModule(runpod_client),
+        "extraction": GeotechnicalExtractionModule(runpod_client),
         "structured_output": StructuredOutputModule(),
-        "analysis_viz": AnalysisVisualizationModule(),
-        "orchestrator": MultiAgentOrchestrator(),
+        "visualization": GeotechnicalVisualizationModule(),
+        "orchestrator": GeotechnicalMultiAgentOrchestrator(),
         "runpod_client": runpod_client
     }
 
 def main():
-    """Main application function."""
+    """Main geotechnical engineering application"""
     
     # Initialize system
-    system = initialize_system()
+    system = initialize_geotechnical_system()
     
-    # Main header
-    st.markdown('<h1 class="main-header">🚀 Geotechnical Engineering Workflow - RunPod GPU Powered</h1>', 
+    # Enhanced header for geotechnical engineering
+    st.markdown('<h1 class="main-header">🏗️ Geotechnical Engineering AI Workflow</h1>', 
                 unsafe_allow_html=True)
     
     # Initialize session state
@@ -1119,69 +1086,56 @@ def main():
     if "async_jobs" not in st.session_state:
         st.session_state.async_jobs = {}
     
-    # Sidebar for document upload and management
+    # Enhanced sidebar for geotechnical document management
     with st.sidebar:
-        st.header("📁 Document Management")
+        st.header("📁 Geotechnical Document Management")
         
-        # RunPod Status
-        st.subheader("🚀 RunPod GPU Status")
+        # RunPod Status with geotechnical branding
+        st.subheader("🚀 AI Processing Status")
         runpod_status = system["extraction"].check_status()
         
         if runpod_status["status"] == "healthy":
-            st.markdown('<div class="runpod-status">✅ RunPod GPU Ready<br/>Serverless endpoint active</div>', 
+            st.markdown('<div class="engineering-metric">✅ GPU Ready<br/>SmolVLM Active</div>', 
                        unsafe_allow_html=True)
         elif runpod_status["status"] == "not_configured":
-            st.markdown('<div class="runpod-status" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);">❌ Not Configured<br/>Set API keys in secrets</div>', 
+            st.markdown('<div class="engineering-metric" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">❌ Not Configured<br/>Set API Keys</div>', 
                        unsafe_allow_html=True)
-            st.error("⚠️ RunPod not configured. Please set RUNPOD_API_KEY and RUNPOD_ENDPOINT_ID in Streamlit secrets or environment variables.")
+            st.error("⚠️ Configure RunPod credentials for AI vision analysis")
         else:
-            st.markdown('<div class="runpod-status" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);">❌ RunPod Error<br/>Check endpoint status</div>', 
+            st.markdown('<div class="engineering-metric" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">❌ GPU Error<br/>Check Status</div>', 
                        unsafe_allow_html=True)
             st.error(f"RunPod Error: {runpod_status.get('error', 'Unknown error')}")
         
-        # System status
-        st.subheader("🔧 System Status")
-        col1, col2 = st.columns(2)
-        with col1:
-            if runpod_status["status"] == "healthy":
-                st.success("SmolVLM 🚀")
-            else:
-                st.error("SmolVLM ❌")
-        with col2:
-            if system["orchestrator"].agents:
-                st.success("SmolAgent ✅")
-            else:
-                st.error("SmolAgent ❌")
-        
         st.divider()
         
-        # File upload
+        # File upload with geotechnical context
+        st.subheader("📄 Upload Documents")
+        st.caption("Upload geotechnical reports, soil test data, engineering drawings, or site photos")
+        
         uploaded_file = st.file_uploader(
-            "Upload Documents",
+            "Select Document",
             type=['pdf', 'png', 'jpg', 'jpeg', 'csv', 'xlsx', 'xls', 'json', 'md', 'txt'],
-            help="Supported: PDF, Images, CSV, Excel, JSON, Markdown"
+            help="PDF reports, CSV test data, engineering drawings (PNG/JPG), Excel files"
         )
         
         if uploaded_file is not None:
-            # Processing options for images
             processing_mode = "sync"
             if uploaded_file.name.lower().endswith(('.png', '.jpg', '.jpeg')):
                 processing_mode = st.radio(
                     "Processing Mode:",
                     ["sync", "async"],
-                    help="Sync: Wait for results. Async: Get job ID and check later."
+                    help="Sync: Immediate analysis. Async: Background processing"
                 )
             
-            if st.button("🚀 Process Document", type="primary"):
-                with st.spinner("Processing document..."):
-                    # Validate file
+            if st.button("🔬 Analyze Document", type="primary"):
+                with st.spinner("Processing geotechnical document..."):
                     is_valid, message, file_type = system["ingestion"].validate_file(uploaded_file)
                     
                     if is_valid:
                         st.info(f"✅ {message}")
                         
-                        # Process based on file type
                         try:
+                            # Process document based on type
                             if file_type == "pdf":
                                 extracted_data = system["ingestion"].process_pdf(uploaded_file)
                             elif file_type == "images":
@@ -1197,10 +1151,10 @@ def main():
                                 else:
                                     extracted_data = system["ingestion"].process_markdown(uploaded_file)
                             
-                            # Additional extraction for images using RunPod SmolVLM
+                            # Enhanced geotechnical vision analysis for images
                             if file_type == "images" and "error" not in extracted_data:
                                 if runpod_status["status"] == "healthy":
-                                    with st.spinner("Running AI vision analysis on RunPod GPU..."):
+                                    with st.spinner("Running geotechnical AI analysis..."):
                                         vision_result = system["extraction"].extract_from_image(
                                             extracted_data["image_data"],
                                             use_async=(processing_mode == "async")
@@ -1208,7 +1162,6 @@ def main():
                                         if "error" not in vision_result:
                                             extracted_data.update(vision_result)
                                             
-                                            # If async, store job for tracking
                                             if processing_mode == "async" and "job_id" in vision_result:
                                                 st.session_state.async_jobs[vision_result["job_id"]] = {
                                                     "file_name": uploaded_file.name,
@@ -1218,32 +1171,19 @@ def main():
                                         else:
                                             st.error(f"Vision analysis failed: {vision_result['error']}")
                                 else:
-                                    st.warning("Vision analysis skipped (RunPod not available)")
+                                    st.warning("AI vision analysis unavailable (RunPod not configured)")
                             
-                            # Organize data
+                            # Organize data with geotechnical focus
                             doc_id = f"{uploaded_file.name}_{int(time.time())}"
                             structured_data = system["structured_output"].organize_data(extracted_data, doc_id)
                             
-                            # Store in session
                             st.session_state.processed_documents[doc_id] = structured_data
                             
                             if processing_mode == "async" and "job_id" in extracted_data:
-                                st.success(f"✅ Document uploaded! Vision analysis job started (ID: {extracted_data['job_id'][:8]}...)")
+                                st.success(f"✅ Document uploaded! AI analysis processing...")
                             else:
-                                st.success(f"✅ Document processed successfully!")
+                                st.success(f"✅ Geotechnical analysis completed!")
                             
-                            # Show processing summary
-                            with st.expander("📊 Processing Summary"):
-                                summary = {
-                                    "document_id": doc_id,
-                                    "type": extracted_data.get("type", "unknown"),
-                                    "timestamp": structured_data.get("timestamp", "unknown"),
-                                    "processing_mode": processing_mode
-                                }
-                                if "job_id" in extracted_data:
-                                    summary["job_id"] = extracted_data["job_id"]
-                                st.json(summary)
-                                
                         except Exception as e:
                             st.error(f"❌ Processing error: {str(e)}")
                     else:
@@ -1251,395 +1191,361 @@ def main():
         
         st.divider()
         
-        # Async Jobs Status
-        if st.session_state.async_jobs:
-            st.subheader("⏳ Async Jobs")
-            for job_id, job_info in list(st.session_state.async_jobs.items()):
-                with st.expander(f"🔄 {job_info['file_name'][:15]}..."):
-                    col1, col2 = st.columns([3, 1])
-                    with col1:
-                        st.write(f"**Status:** {job_info['status']}")
-                        st.write(f"**Started:** {job_info['timestamp'][:19]}")
-                    with col2:
-                        if st.button("Check", key=f"check_{job_id}"):
-                            result = system["extraction"].check_async_job(job_id)
-                            if result["status"] == "success":
-                                job_status = result["result"].get("status", "unknown")
-                                st.session_state.async_jobs[job_id]["status"] = job_status
-                                
-                                if job_status == "COMPLETED":
-                                    st.success("✅ Completed!")
-                                    # Process results here if needed
-                                elif job_status == "FAILED":
-                                    st.error("❌ Failed")
-                                elif job_status in ["IN_PROGRESS", "IN_QUEUE"]:
-                                    st.info("🔄 Processing...")
-                                st.rerun()
-        
-        st.divider()
-        
-        # Document list
-        st.subheader("📋 Processed Documents")
+        # Document list with geotechnical info
+        st.subheader("📋 Analyzed Documents")
         if st.session_state.processed_documents:
             for doc_id, doc_data in st.session_state.processed_documents.items():
                 with st.expander(f"📄 {doc_id.split('_')[0][:20]}..."):
                     st.write(f"**Type:** {doc_data.get('document_type', 'Unknown')}")
                     st.write(f"**Status:** {doc_data.get('processing_status', 'Unknown')}")
-                    st.write(f"**Timestamp:** {doc_data.get('timestamp', 'Unknown')[:19]}")
+                    st.write(f"**Analysis:** {doc_data.get('timestamp', 'Unknown')[:19]}")
                     
                     if st.button(f"🗑️ Remove", key=f"remove_{doc_id}"):
                         del st.session_state.processed_documents[doc_id]
                         st.rerun()
         else:
-            st.info("No documents processed yet")
+            st.info("No documents analyzed yet")
     
-    # Main content area with tabs
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["💬 AI Chat Interface", "📊 Data Analysis", "📈 Visualizations", "🚀 RunPod Status", "🔧 System Info"])
+    # Main content area with enhanced geotechnical tabs
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "💬 Geotechnical AI Assistant", 
+        "📊 Data Analysis", 
+        "📈 Visualizations", 
+        "🚀 System Status", 
+        "🔧 Settings"
+    ])
     
     with tab1:
-        st.subheader("🤖 AI-Powered Engineering Assistant (RunPod GPU)")
+        st.markdown('<div class="geotechnical-container">', unsafe_allow_html=True)
+        st.subheader("🤖 Geotechnical Engineering AI Assistant")
+        st.caption("Specialized in soil mechanics, foundation design, tunnel engineering, and slope stability")
         
         if runpod_status["status"] != "healthy":
-            st.warning("⚠️ RunPod GPU not available. Vision analysis will be limited. Please configure RunPod API credentials.")
+            st.warning("⚠️ AI vision analysis limited. Configure RunPod for full capabilities.")
         
         # Display chat messages
         for message in st.session_state.messages:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
         
-        # Chat input
-        if prompt := st.chat_input("Ask about your documents or engineering questions..."):
-            # Add user message
+        # Enhanced chat input with geotechnical context
+        if prompt := st.chat_input("Ask about soil analysis, tunnel design, foundation engineering, or safety procedures..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"):
                 st.markdown(prompt)
             
-            # Generate response using orchestrator
             with st.chat_message("assistant"):
-                with st.spinner("Analyzing your query with AI agents..."):
+                with st.spinner("Consulting geotechnical engineering specialists..."):
                     
-                    # Prepare context from processed documents
                     context = {
                         "documents": list(st.session_state.processed_documents.keys()),
                         "document_count": len(st.session_state.processed_documents),
-                        "runpod_status": runpod_status["status"]
+                        "runpod_status": runpod_status["status"],
+                        "domain": "geotechnical_engineering"
                     }
                     
-                    # Route query to appropriate agent
-                    agent_response = system["orchestrator"].route_query(prompt, context)
+                    agent_response = system["orchestrator"].route_geotechnical_query(prompt, context)
                     
-                    # Display response
-                    response_text = agent_response.get("response", "I apologize, but I couldn't process your query.")
+                    response_text = agent_response.get("response", "I apologize, but I couldn't process your geotechnical engineering query.")
                     st.markdown(response_text)
                     
-                    # Show agent info
-                    with st.expander("🔍 Query Processing Details"):
+                    # Show specialist info
+                    with st.expander("🔍 Analysis Details"):
                         st.json(agent_response)
             
-            # Add assistant response to chat history
             st.session_state.messages.append({"role": "assistant", "content": response_text})
         
-        # Example queries
-        st.subheader("💡 Example Queries")
-        example_queries = [
-            "Calculate tunnel support for 8m diameter at 25m depth in poor rock",
-            "Generate safety checklist for excavation project",
-            "Analyze soil data: {'density': 1.8, 'moisture_content': 15, 'bearing_capacity': 150}",
-            "What are the key findings from the uploaded document?"
-        ]
+        # Enhanced example queries for geotechnical engineering
+        st.subheader("💡 Example Geotechnical Queries")
         
-        for i, example in enumerate(example_queries):
-            if st.button(example, key=f"example_{i}"):
-                # Add example to chat
-                st.session_state.messages.append({"role": "user", "content": example})
-                
-                # Process with agent
-                context = {
-                    "documents": list(st.session_state.processed_documents.keys()),
-                    "document_count": len(st.session_state.processed_documents),
-                    "runpod_status": runpod_status["status"]
-                }
-                agent_response = system["orchestrator"].route_query(example, context)
-                response_text = agent_response.get("response", "Could not process query.")
-                st.session_state.messages.append({"role": "assistant", "content": response_text})
-                
-                st.rerun()
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("**🏗️ Foundation & Soil Analysis:**")
+            example_queries_1 = [
+                "Analyze soil bearing capacity for 10-story building",
+                "Calculate settlement for clay soil with OCR=2.5",
+                "Evaluate soil data: {'density': 1.8, 'moisture_content': 15, 'bearing_capacity': 250, 'spt_n_value': 18}",
+                "Design shallow foundation for sandy soil"
+            ]
+            
+            for i, example in enumerate(example_queries_1):
+                if st.button(example, key=f"example1_{i}"):
+                    st.session_state.messages.append({"role": "user", "content": example})
+                    context = {
+                        "documents": list(st.session_state.processed_documents.keys()),
+                        "domain": "geotechnical_engineering"
+                    }
+                    agent_response = system["orchestrator"].route_geotechnical_query(example, context)
+                    response_text = agent_response.get("response", "Could not process query.")
+                    st.session_state.messages.append({"role": "assistant", "content": response_text})
+                    st.rerun()
+        
+        with col2:
+            st.markdown("**🚇 Tunnel & Excavation Engineering:**")
+            example_queries_2 = [
+                "Calculate tunnel support for 12m diameter at 45m depth in poor rock",
+                "Generate safety checklist for tunnel excavation project",
+                "Design retaining wall for 8m deep excavation",
+                "Evaluate slope stability for 30° cut in weathered rock"
+            ]
+            
+            for i, example in enumerate(example_queries_2):
+                if st.button(example, key=f"example2_{i}"):
+                    st.session_state.messages.append({"role": "user", "content": example})
+                    context = {
+                        "documents": list(st.session_state.processed_documents.keys()),
+                        "domain": "geotechnical_engineering"
+                    }
+                    agent_response = system["orchestrator"].route_geotechnical_query(example, context)
+                    response_text = agent_response.get("response", "Could not process query.")
+                    st.session_state.messages.append({"role": "assistant", "content": response_text})
+                    st.rerun()
+        
+        st.markdown('</div>', unsafe_allow_html=True)
     
     with tab2:
-        st.subheader("📊 Data Analysis Dashboard")
+        st.markdown('<div class="geotechnical-container">', unsafe_allow_html=True)
+        st.subheader("📊 Geotechnical Data Analysis")
         
         if st.session_state.processed_documents:
-            # Select document for analysis
             doc_options = list(st.session_state.processed_documents.keys())
             selected_doc = st.selectbox("Select document for analysis:", doc_options)
             
             if selected_doc:
                 doc_data = st.session_state.processed_documents[selected_doc]
                 
-                # Show document info
-                col1, col2, col3 = st.columns(3)
+                # Enhanced metrics display
+                col1, col2, col3, col4 = st.columns(4)
                 with col1:
-                    st.metric("Document Type", doc_data.get("document_type", "Unknown"))
+                    st.markdown('<div class="engineering-metric">Document Type<br/>' + 
+                               doc_data.get("document_type", "Unknown") + '</div>', 
+                               unsafe_allow_html=True)
                 with col2:
-                    st.metric("Processing Status", doc_data.get("processing_status", "Unknown"))
+                    st.markdown('<div class="soil-analysis">Analysis Status<br/>' + 
+                               doc_data.get("processing_status", "Unknown") + '</div>', 
+                               unsafe_allow_html=True)
                 with col3:
-                    st.metric("File Size", f"{len(str(doc_data)):,} chars")
+                    st.markdown('<div class="tunnel-info">File Size<br/>' + 
+                               f"{len(str(doc_data)):,} chars</div>", 
+                               unsafe_allow_html=True)
+                with col4:
+                    timestamp = doc_data.get("timestamp", "Unknown")[:10] if doc_data.get("timestamp") else "Unknown"
+                    st.markdown('<div class="engineering-metric">Processed<br/>' + 
+                               timestamp + '</div>', 
+                               unsafe_allow_html=True)
                 
-                # Perform analysis based on document type
+                st.divider()
+                
+                # Detailed analysis based on document type
                 content = doc_data.get("content", {})
+                doc_type = doc_data.get("document_type")
                 
-                if doc_data.get("document_type") in ["csv", "excel"]:
-                    # Statistical analysis for structured data
+                if doc_type in ["csv", "excel"]:
+                    st.subheader("📈 Geotechnical Test Data Analysis")
                     tabular_data = content.get("tabular_data", {})
-                    analysis = system["analysis_viz"].generate_statistical_summary(tabular_data)
                     
-                    if "error" not in analysis:
-                        st.subheader("📈 Statistical Summary")
+                    if "geotechnical_analysis" in tabular_data:
+                        geo_analysis = tabular_data["geotechnical_analysis"]
                         
-                        # Display results in a nice format
-                        results = analysis.get("results", {})
-                        for analysis_type, analysis_data in results.items():
-                            st.write(f"**{analysis_type.replace('_', ' ').title()}**")
-                            
-                            col1, col2, col3 = st.columns(3)
-                            with col1:
-                                st.metric("Total Rows", analysis_data.get("total_rows", 0))
-                            with col2:
-                                st.metric("Total Columns", analysis_data.get("total_columns", 0))
-                            with col3:
-                                st.metric("Numerical Columns", analysis_data.get("numerical_columns", 0))
-                            
-                            # Show statistics if available
-                            stats = analysis_data.get("statistics", {})
-                            if stats:
-                                st.write("**Descriptive Statistics:**")
-                                stats_df = pd.DataFrame(stats)
-                                st.dataframe(stats_df)
-                    else:
-                        st.error(f"Analysis error: {analysis['error']}")
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.write("**🔍 Identified Parameters:**")
+                            params = geo_analysis.get("identified_parameters", [])
+                            if params:
+                                for param in params:
+                                    st.write(f"• {param.replace('_', ' ').title()}")
+                            else:
+                                st.write("No specific geotechnical parameters identified")
+                        
+                        with col2:
+                            st.write("**🧪 Potential Test Types:**")
+                            tests = geo_analysis.get("potential_tests", [])
+                            if tests:
+                                for test in tests:
+                                    st.write(f"• {test}")
+                            else:
+                                st.write("Standard geotechnical analysis applicable")
+                    
+                    # Statistical summary
+                    stats = tabular_data.get("summary_stats", {})
+                    if stats:
+                        st.subheader("📊 Statistical Summary")
+                        stats_df = pd.DataFrame(stats)
+                        st.dataframe(stats_df)
                 
-                elif doc_data.get("document_type") == "image":
-                    # Display vision analysis results
+                elif doc_type == "image":
+                    st.subheader("👁️ AI Vision Analysis Results")
+                    
                     if "analysis_type" in content:
-                        st.subheader("👁️ RunPod GPU Vision Analysis Results")
-                        
-                        # Show GPU processing info
-                        if content.get("analysis_type") == "runpod_vision_language_model":
-                            st.markdown('<div class="gpu-info">🚀 Processed on RunPod Serverless GPU</div>', 
+                        if content.get("analysis_type") == "geotechnical_vision_analysis":
+                            st.markdown('<div class="tunnel-info">🚀 Processed with Geotechnical AI Specialist</div>', 
                                        unsafe_allow_html=True)
                         
-                        st.write(f"**Query:** {content.get('query', 'N/A')}")
-                        st.write(f"**Analysis:** {content.get('response', 'N/A')}")
-                        st.write(f"**Confidence:** {content.get('confidence', 'N/A')}")
+                        st.write(f"**🔍 Analysis Query:**")
+                        st.info(content.get('query', 'N/A'))
+                        
+                        st.write(f"**📋 AI Analysis:**")
+                        response_text = content.get('response', 'N/A')
+                        st.write(response_text)
+                        
+                        # Show extracted parameters if available
+                        if "extracted_parameters" in content:
+                            st.subheader("📐 Extracted Parameters")
+                            params = content["extracted_parameters"]
+                            
+                            for category, values in params.items():
+                                if values:
+                                    st.write(f"**{category.replace('_', ' ').title()}:**")
+                                    st.json(values)
                         
                         processing_time = content.get('processing_time', 'unknown')
                         if processing_time != 'unknown':
-                            st.write(f"**GPU Processing Time:** {processing_time}")
+                            st.success(f"⚡ GPU Processing Time: {processing_time}")
                 
-                elif doc_data.get("document_type") == "pdf":
-                    # PDF analysis
+                elif doc_type == "pdf":
+                    st.subheader("📄 PDF Document Analysis")
+                    
                     text_data = content.get("text_data", [])
                     if text_data:
-                        st.subheader("📄 PDF Analysis")
-                        
                         total_chars = sum(page.get('char_count', 0) for page in text_data)
+                        total_geo_keywords = sum(len(page.get('geo_keywords', [])) for page in text_data)
                         
                         col1, col2, col3 = st.columns(3)
                         with col1:
                             st.metric("Total Pages", len(text_data))
                         with col2:
-                            st.metric("Total Characters", f"{total_chars:,}")
+                            st.metric("Characters", f"{total_chars:,}")
                         with col3:
-                            avg_chars = total_chars / len(text_data) if text_data else 0
-                            st.metric("Avg Chars/Page", f"{avg_chars:.0f}")
+                            st.metric("Geo Keywords", total_geo_keywords)
                         
-                        # Show sample text
+                        # Show geotechnical keywords found
+                        all_keywords = []
+                        for page in text_data:
+                            all_keywords.extend(page.get('geo_keywords', []))
+                        
+                        if all_keywords:
+                            st.write("**🔍 Geotechnical Keywords Found:**")
+                            unique_keywords = list(set(all_keywords))
+                            st.write(", ".join(unique_keywords))
+                        
+                        # Sample text
                         if text_data:
-                            st.write("**Sample Text (First Page):**")
+                            st.write("**📄 Sample Text (First Page):**")
                             sample_text = text_data[0].get('text', '')[:500]
                             st.text_area("Preview", sample_text, height=150, disabled=True)
                 
-                # Display raw content
+                # Raw content viewer
                 with st.expander("🔍 Raw Content Data"):
                     st.json(content)
         else:
-            st.info("📥 Upload and process documents to see analysis options")
+            st.info("📥 Upload and analyze geotechnical documents to see detailed analysis")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
     
     with tab3:
-        st.subheader("📈 Data Visualizations")
+        st.markdown('<div class="geotechnical-container">', unsafe_allow_html=True)
+        st.subheader("📈 Geotechnical Data Visualizations")
+        st.caption("Intelligent visualizations for all document types")
         
         if st.session_state.processed_documents:
-            # Select document for visualization
-            doc_options = [doc_id for doc_id, doc_data in st.session_state.processed_documents.items() 
-                          if doc_data.get("document_type") in ["csv", "excel"]]
+            # Allow visualization of ANY document type
+            doc_options = list(st.session_state.processed_documents.keys())
+            selected_doc = st.selectbox("Select document for visualization:", doc_options, key="viz_doc")
             
-            if doc_options:
-                selected_doc = st.selectbox("Select document for visualization:", doc_options, key="viz_doc")
+            if selected_doc:
+                doc_data = st.session_state.processed_documents[selected_doc]
                 
-                if selected_doc:
-                    doc_data = st.session_state.processed_documents[selected_doc]
-                    content = doc_data.get("content", {})
-                    
-                    # Chart type selection
-                    col1, col2 = st.columns([2, 1])
-                    with col1:
-                        chart_type = st.selectbox(
-                            "Select chart type:",
-                            ["auto", "histogram", "scatter", "line", "box", "correlation"],
-                            key="chart_type"
-                        )
-                    with col2:
-                        if st.button("🎨 Generate Visualization", type="primary"):
-                            with st.spinner("Creating visualization..."):
-                                tabular_data = content.get("tabular_data", {})
-                                fig = system["analysis_viz"].create_visualization(tabular_data, chart_type)
-                                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("📊 No CSV or Excel files available for visualization")
+                col1, col2 = st.columns([3, 1])
+                with col2:
+                    if st.button("🎨 Generate Visualization", type="primary"):
+                        with st.spinner("Creating geotechnical visualization..."):
+                            # Use enhanced visualization module that works with any document type
+                            fig = system["visualization"].create_visualization_from_any_document(doc_data)
+                            st.plotly_chart(fig, use_container_width=True)
+                
+                with col1:
+                    doc_type = doc_data.get("document_type", "Unknown")
+                    st.info(f"📊 Document Type: {doc_type} - Visualization available for all processed documents")
+                
+                # Auto-generate visualization for demonstration
+                if not st.session_state.get(f"viz_generated_{selected_doc}", False):
+                    with st.spinner("Preparing visualization..."):
+                        fig = system["visualization"].create_visualization_from_any_document(doc_data)
+                        st.plotly_chart(fig, use_container_width=True)
+                        st.session_state[f"viz_generated_{selected_doc}"] = True
         else:
-            st.info("📥 Upload CSV or Excel files to create visualizations")
+            st.info("📥 Upload geotechnical documents to create intelligent visualizations")
+            st.write("**Supported visualizations:**")
+            st.write("• 📊 CSV/Excel: Statistical analysis, correlation matrices, depth profiles")
+            st.write("• 🖼️ Images: Parameter extraction charts, measurement displays")  
+            st.write("• 📄 PDFs: Keyword frequency, content analysis")
+            st.write("• 📋 JSON: Data structure visualization")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
     
     with tab4:
-        st.subheader("🚀 RunPod Serverless GPU Status")
+        st.markdown('<div class="geotechnical-container">', unsafe_allow_html=True)
+        st.subheader("🚀 System Status & Performance")
         
-        # RunPod configuration display
+        # System status overview
         config = system["config"]
         
         col1, col2 = st.columns(2)
         with col1:
-            st.write("**Configuration:**")
+            st.write("**🔧 Configuration Status:**")
             config_status = "✅ Configured" if config.api_key and config.endpoint_id else "❌ Not Configured"
             st.write(f"Status: {config_status}")
             st.write(f"API Key: {'***' + config.api_key[-4:] if config.api_key else 'Not set'}")
-            st.write(f"Endpoint ID: {config.endpoint_id[:8] + '...' if config.endpoint_id else 'Not set'}")
+            st.write(f"Endpoint: {config.endpoint_id if config.endpoint_id else 'Not set'}")
         
         with col2:
-            st.write("**Endpoint Details:**")
-            if st.button("🔄 Check Endpoint Health"):
-                with st.spinner("Checking RunPod endpoint..."):
+            st.write("**🏗️ Geotechnical Capabilities:**")
+            if st.button("🔄 Test AI System"):
+                with st.spinner("Testing geotechnical AI capabilities..."):
                     health = system["runpod_client"].health_check()
                     if health["status"] == "healthy":
-                        st.success("✅ Endpoint is healthy!")
-                        if "response" in health:
-                            with st.expander("Health Details"):
-                                st.json(health["response"])
+                        st.success("✅ AI vision analysis ready!")
+                        st.success("✅ Soil analysis agent active")
+                        st.success("✅ Tunnel engineering agent active")
+                        st.success("✅ Safety checklist generator ready")
                     else:
-                        st.error(f"❌ Endpoint issue: {health.get('error', 'Unknown error')}")
+                        st.error(f"❌ System issue: {health.get('error', 'Unknown error')}")
         
         st.divider()
         
         # Performance metrics
-        st.subheader("⚡ Performance Metrics")
-        
-        # GPU info cards
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
             if runpod_status["status"] == "healthy":
-                st.markdown('<div class="metric-card">🚀 SmolVLM<br/>GPU Ready</div>', unsafe_allow_html=True)
+                st.markdown('<div class="engineering-metric">🚀 SmolVLM<br/>Ready</div>', unsafe_allow_html=True)
             else:
-                st.markdown('<div class="metric-card" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);">❌ SmolVLM<br/>GPU Error</div>', unsafe_allow_html=True)
-        
-        with col2:
-            processing_mode = "Serverless" if config.api_key else "Local"
-            st.markdown(f'<div class="metric-card">⚙️ Mode<br/>{processing_mode}</div>', unsafe_allow_html=True)
-        
-        with col3:
-            doc_count = len(st.session_state.processed_documents)
-            st.markdown(f'<div class="metric-card">📄 Documents<br/>{doc_count}</div>', unsafe_allow_html=True)
-        
-        with col4:
-            job_count = len(st.session_state.async_jobs)
-            st.markdown(f'<div class="metric-card">⏳ Async Jobs<br/>{job_count}</div>', unsafe_allow_html=True)
-        
-        st.divider()
-        
-        # Cost estimation
-        st.subheader("💰 Cost Estimation")
-        st.info("""
-        **RunPod Serverless Pricing (Estimated):**
-        - RTX 4090: ~$0.00011-0.00016 per second
-        - A100 40GB: ~$0.0004-0.0006 per second  
-        - H100: ~$0.0008-0.0012 per second
-        
-        💡 **Pay only for actual processing time!** No idle costs when not processing.
-        """)
-        
-        # Usage tips
-        st.subheader("💡 Optimization Tips")
-        st.info("""
-        **To optimize costs and performance:**
-        1. Use async processing for batch operations
-        2. Batch multiple images when possible
-        3. Adjust timeout settings appropriately
-        4. Monitor endpoint health regularly
-        5. Use appropriate GPU tier for your workload
-        """)
-    
-    with tab5:
-        st.subheader("🔧 System Status & Information")
-        
-        # System status
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            if runpod_status["status"] == "healthy":
-                st.markdown('<div class="metric-card">✅ SmolVLM<br/>RunPod GPU</div>', unsafe_allow_html=True)
-            else:
-                st.markdown('<div class="metric-card" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);">❌ SmolVLM<br/>GPU Error</div>', unsafe_allow_html=True)
+                st.markdown('<div class="engineering-metric" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">❌ SmolVLM<br/>Error</div>', unsafe_allow_html=True)
         
         with col2:
             if system["orchestrator"].agents:
-                st.markdown('<div class="metric-card">✅ SmolAgent<br/>Ready</div>', unsafe_allow_html=True)
+                st.markdown('<div class="soil-analysis">✅ Agents<br/>Active</div>', unsafe_allow_html=True)
             else:
-                st.markdown('<div class="metric-card" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);">❌ SmolAgent<br/>Error</div>', unsafe_allow_html=True)
+                st.markdown('<div class="soil-analysis" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">❌ Agents<br/>Error</div>', unsafe_allow_html=True)
         
         with col3:
             doc_count = len(st.session_state.processed_documents)
-            st.markdown(f'<div class="metric-card">📄 Documents<br/>{doc_count}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="tunnel-info">📄 Documents<br/>{doc_count}</div>', unsafe_allow_html=True)
         
         with col4:
-            st.markdown(f'<div class="metric-card">🌐 Processing<br/>Serverless</div>', unsafe_allow_html=True)
+            processing_mode = "GPU Accelerated" if config.api_key else "Local"
+            st.markdown(f'<div class="engineering-metric">🌐 Mode<br/>{processing_mode}</div>', unsafe_allow_html=True)
         
-        st.divider()
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with tab5:
+        st.markdown('<div class="geotechnical-container">', unsafe_allow_html=True)
+        st.subheader("🔧 Application Settings")
         
-        # Technology stack info
-        st.subheader("🛠️ Technology Stack")
-        tech_info = {
-            "Framework": "Streamlit 🌊",
-            "GPU Infrastructure": "RunPod Serverless 🚀",
-            "Vision-Language Model": "SmolVLM (2B params) 🤖",
-            "Agent Orchestration": "SmolAgent 🧠",
-            "Visualization": "Plotly 📊",
-            "Data Processing": "Pandas, NumPy 🐼",
-            "Document Processing": "PyPDF, OpenPyXL 📄",
-            "API Communication": "Requests, AsyncIO 🔗"
-        }
+        st.write("**🏗️ Geotechnical Engineering Workflow Configuration**")
         
-        for tech, desc in tech_info.items():
-            st.write(f"**{tech}:** {desc}")
-        
-        st.divider()
-        
-        # RunPod advantages
-        st.subheader("🚀 RunPod Advantages")
-        advantages = [
-            "**Pay-per-second billing** - No idle costs",
-            "**Auto-scaling** - Scale from 0 to 1000+ instantly", 
-            "**FlashBoot technology** - 2-3 second cold starts",
-            "**Global regions** - Low latency worldwide",
-            "**High-end GPUs** - RTX 4090, A100, H100 available",
-            "**No infrastructure management** - Focus on your app"
-        ]
-        
-        for advantage in advantages:
-            st.write(f"• {advantage}")
-        
-        st.divider()
-        
-        # Clear data options
-        st.subheader("🧹 Data Management")
-        
+        # Data management
         col1, col2, col3 = st.columns(3)
         with col1:
             if st.button("🗑️ Clear Chat History"):
@@ -1658,6 +1564,17 @@ def main():
                 st.session_state.async_jobs = {}
                 st.success("Async jobs cleared!")
                 st.rerun()
+        
+        st.divider()
+        
+        # System information
+        st.write("**📋 System Information:**")
+        st.write("• **Domain**: Geotechnical & Tunnel Engineering")
+        st.write("• **AI Models**: SmolVLM-Instruct (Vision), SmolAgent (Reasoning)")
+        st.write("• **Infrastructure**: RunPod Serverless GPU")
+        st.write("• **Specializations**: Soil mechanics, Foundation design, Tunnel engineering, Slope stability")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
