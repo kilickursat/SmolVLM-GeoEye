@@ -455,6 +455,146 @@ Please provide a detailed technical analysis focusing specifically on geotechnic
         
         return parameters
 
+class StructuredOutputModule:
+    """
+    Structured Output Module
+    Organizes extracted information into structured formats for querying and analysis.
+    """
+    
+    def __init__(self):
+        self.data_store = {}
+        self.metadata_store = {}
+    
+    def organize_data(self, extracted_data: Dict[str, Any], document_id: str) -> Dict[str, Any]:
+        """Organize extracted data into a structured format."""
+        try:
+            structured_data = {
+                "document_id": document_id,
+                "timestamp": datetime.now().isoformat(),
+                "document_type": extracted_data.get("type", "unknown"),
+                "processing_status": "completed",
+                "content": {},
+                "metadata": {},
+                "searchable_fields": []
+            }
+            
+            # Process different data types
+            if extracted_data.get("type") == "image" and "extraction_type" in extracted_data:
+                # Vision analysis results
+                structured_data["content"] = {
+                    "analysis_type": "geotechnical_vision_analysis",
+                    "query": extracted_data.get("query", ""),
+                    "response": extracted_data.get("response", ""),
+                    "extracted_parameters": extracted_data.get("extracted_parameters", {}),
+                    "confidence": extracted_data.get("confidence", "medium"),
+                    "processing_time": extracted_data.get("processing_time", "unknown")
+                }
+                structured_data["searchable_fields"] = [
+                    extracted_data.get("response", "")
+                ]
+                
+            elif extracted_data.get("type") in ["pdf", "markdown"]:
+                # Text-based content
+                if "text_content" in extracted_data:
+                    structured_data["content"] = {
+                        "text_data": extracted_data["text_content"],
+                        "geotechnical_keywords": extracted_data.get("geotechnical_keywords", []),
+                        "extracted_info": extracted_data.get("extracted_info", {})
+                    }
+                    # Make text searchable
+                    if isinstance(extracted_data["text_content"], list):
+                        structured_data["searchable_fields"] = [
+                            page["text"] for page in extracted_data["text_content"]
+                        ]
+                    else:
+                        structured_data["searchable_fields"] = [extracted_data["text_content"]]
+                
+            elif extracted_data.get("type") in ["csv", "excel"]:
+                # Structured data
+                structured_data["content"] = {
+                    "tabular_data": extracted_data,
+                    "column_info": self._analyze_columns(extracted_data),
+                    "geotechnical_analysis": extracted_data.get("geotechnical_analysis", {})
+                }
+                structured_data["searchable_fields"] = [
+                    str(extracted_data.get("columns", [])),
+                    str(extracted_data.get("summary_stats", {}))
+                ]
+                
+            elif extracted_data.get("type") == "json":
+                # JSON data
+                structured_data["content"] = {
+                    "json_data": extracted_data["data"],
+                    "structure": extracted_data.get("structure_analysis", {})
+                }
+                structured_data["searchable_fields"] = [
+                    str(extracted_data["data"])
+                ]
+            
+            # Store in data store
+            self.data_store[document_id] = structured_data
+            self.metadata_store[document_id] = {
+                "upload_time": structured_data["timestamp"],
+                "document_type": structured_data["document_type"],
+                "processing_status": "completed"
+            }
+            
+            return structured_data
+            
+        except Exception as e:
+            logger.error(f"Error organizing data: {str(e)}")
+            return {"error": str(e)}
+    
+    def _analyze_columns(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Analyze columns in structured data for better organization."""
+        column_analysis = {}
+        
+        if data.get("type") == "csv":
+            columns = data.get("columns", [])
+            data_types = data.get("data_types", {})
+            
+            for col in columns:
+                dtype = data_types.get(col, "object")
+                column_analysis[col] = {
+                    "data_type": dtype,
+                    "is_numeric": dtype in ["int64", "float64"],
+                    "engineering_relevance": self._assess_engineering_relevance(col)
+                }
+                
+        elif data.get("type") == "excel":
+            for sheet_name, sheet_data in data.get("sheets_data", {}).items():
+                columns = sheet_data.get("columns", [])
+                data_types = sheet_data.get("data_types", {})
+                
+                column_analysis[sheet_name] = {}
+                for col in columns:
+                    dtype = data_types.get(col, "object")
+                    column_analysis[sheet_name][col] = {
+                        "data_type": dtype,
+                        "is_numeric": dtype in ["int64", "float64"],
+                        "engineering_relevance": self._assess_engineering_relevance(col)
+                    }
+        
+        return column_analysis
+    
+    def _assess_engineering_relevance(self, column_name: str) -> str:
+        """Assess engineering relevance of column names."""
+        engineering_terms = {
+            "high": ["strength", "load", "stress", "strain", "pressure", "force", "weight", 
+                    "density", "depth", "height", "width", "diameter", "thickness", "bearing",
+                    "spt", "cohesion", "friction", "settlement", "consolidation"],
+            "medium": ["time", "date", "location", "sample", "test", "measurement", "elevation"],
+            "low": ["id", "name", "description", "notes", "comments"]
+        }
+        
+        col_lower = column_name.lower()
+        
+        for relevance, terms in engineering_terms.items():
+            if any(term in col_lower for term in terms):
+                return relevance
+        
+        return "unknown"
+
 class GeotechnicalVisualizationModule:
     """Enhanced visualization module for all geotechnical document types"""
     
