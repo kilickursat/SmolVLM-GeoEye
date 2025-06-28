@@ -1,7 +1,7 @@
-# RunPod Serverless Worker for SmolVLM - Optimized Container
-# ============================================================
+# RunPod Serverless Worker for SmolVLM - Fixed Version
+# ====================================================
 
-FROM runpod/pytorch:2.1.0-py3.10-cuda11.8.0-devel-ubuntu22.04
+FROM runpod/pytorch:2.1.0-py3.11-cuda11.8.0-devel-ubuntu22.04
 
 # Set working directory
 WORKDIR /app
@@ -20,21 +20,24 @@ RUN pip install --upgrade pip setuptools wheel
 # Install PyTorch with CUDA support (if not already in base image)
 RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 
-# Install transformers and related dependencies
-RUN pip install transformers>=4.36.0 \
+# Install transformers and related dependencies with specific versions
+RUN pip install \
+    transformers>=4.36.0 \
     accelerate>=0.25.0 \
     tokenizers>=0.15.0 \
     safetensors>=0.4.0 \
     huggingface-hub>=0.19.0
 
 # Install image processing dependencies
-RUN pip install Pillow>=9.0.0 \
+RUN pip install \
+    Pillow>=9.0.0 \
     requests>=2.28.0
 
 # Install RunPod SDK
 RUN pip install runpod>=1.7.0
 
-# Optional: Install flash-attention for better performance (may fail on some GPUs)
+# Install flash-attention for better performance (may fail on some GPUs)
+# Use --no-build-isolation to avoid dependency conflicts
 RUN pip install flash-attn>=2.5.0 --no-build-isolation || echo "Flash attention installation failed, continuing without it"
 
 # Copy the worker script
