@@ -1,31 +1,39 @@
-# RunPod Serverless Worker Requirements for SmolVLM
-# =================================================
+# RunPod Serverless Worker Requirements for SmolVLM - Fixed Version
+# ===================================================================
 
-# Core ML Framework
-torch
-torchvision
-torchaudio
+# Core ML Framework (specific versions for compatibility)
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
 
-# Transformers and HuggingFace
-transformers
-accelerate
-tokenizers
-safetensors
-huggingface-hub
+# Transformers and HuggingFace (latest compatible versions)
+transformers>=4.36.0
+accelerate>=0.25.0
+tokenizers>=0.15.0
+safetensors>=0.4.0
+huggingface-hub>=0.19.0
 
 # Image Processing
-Pillow
+Pillow>=9.0.0
 
-# RunPod SDK
-runpod
+# RunPod SDK (latest version)
+runpod>=1.7.0
 
-# Optional Performance Optimizations
-flash-attn  # For better attention performance (GPU only)
-optimum    # HuggingFace optimizations
+# Performance Optimizations (optional but recommended)
+# Flash attention for better performance (GPU only)
+# Note: This may fail on some GPU types, installation is optional
+flash-attn>=2.5.0
+
+# HuggingFace optimizations
+optimum>=1.16.0
 
 # Utilities
-requests
-numpy
+requests>=2.28.0
+numpy>=1.21.0
 
 # Logging and monitoring
-psutil # For system monitoring
+psutil>=5.9.0  # For system monitoring
+
+# Additional dependencies for model optimization
+# bitsandbytes>=0.41.0  # For 8-bit/4-bit quantization (uncomment if needed)
+# xformers>=0.0.20  # For memory efficient attention (uncomment if needed)
