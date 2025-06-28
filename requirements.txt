@@ -1,22 +1,22 @@
-# Tunnelling & Geotechnical Engineering Workflow - Streamlit Requirements
-# ========================================================================
+# Geotechnical Engineering Workflow - Updated Requirements with RunPod Integration
+# ===============================================================================
 
 # Core Framework
 streamlit
 
-# AI/ML Libraries
-torch
-transformers
-smolagents
-accelerate
+# RunPod Integration
+runpod
+requests
+aiohttp
 
-# HuggingFace Hub
+# AI/ML Libraries (for SmolAgent only - SmolVLM runs on RunPod)
+smolagents
+
+# HuggingFace Hub (for authentication and model info)
 huggingface-hub
 
-# Computer Vision & Image Processing
+# Image Processing (for local image preprocessing before sending to RunPod)
 Pillow
-opencv-python
-
 # Document Processing
 pypdf
 openpyxl
@@ -32,17 +32,23 @@ plotly
 seaborn
 
 # Web Framework Dependencies
-requests
 python-dotenv
+urllib3
 
-# Additional Dependencies for Production
+# Development Dependencies
 watchdog
 click
 
-# Optional: Flash Attention (GPU acceleration)
-# Uncomment if deploying on GPU-enabled infrastructure
-# flash-attn>=2.5.0
+# Additional utilities
+python-dateutil
+pytz
+typing-extensions
 
-# Development Dependencies (Optional)
-# pytest>=7.4.0
-# jupyter>=1.0.0
+# Optional: For local development and testing
+# jupyter
+# pytest
+# black
+# flake8
+
+# Production Dependencies
+gunicorn  # For production deployment if needed
