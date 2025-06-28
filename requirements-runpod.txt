@@ -1,0 +1,31 @@
+# RunPod Serverless Worker Requirements for SmolVLM
+# =================================================
+
+# Core ML Framework
+torch
+torchvision
+torchaudio
+
+# Transformers and HuggingFace
+transformers
+accelerate
+tokenizers
+safetensors
+huggingface-hub
+
+# Image Processing
+Pillow
+
+# RunPod SDK
+runpod
+
+# Optional Performance Optimizations
+flash-attn  # For better attention performance (GPU only)
+optimum    # HuggingFace optimizations
+
+# Utilities
+requests
+numpy
+
+# Logging and monitoring
+psutil # For system monitoring
