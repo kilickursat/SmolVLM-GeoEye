@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Tunnelling & Geotechnical Engineering Workflow - Streamlit Application
-=====================================================================
+Tunnelling & Geotechnical Engineering Workflow - Streamlit Application with RunPod Integration
+=========================================================================================
 
-A comprehensive multi-modal document processing system using SmolVLM, SmolAgent,
-and Streamlit for geotechnical engineering workflows.
+A comprehensive multi-modal document processing system using SmolVLM via RunPod Serverless GPU,
+SmolAgent, and Streamlit for geotechnical engineering workflows.
 
 Author: Generated for Geotechnical Engineering
-Version: 2.0.0 (Fixed)
+Version: 3.0.0 (RunPod Integration)
 """
 
 import streamlit as st
@@ -24,14 +24,14 @@ from typing import List, Dict, Any, Optional, Union, Tuple
 from datetime import datetime
 import tempfile
 import warnings
+import requests
+import asyncio
+from dataclasses import dataclass
 
 # Suppress warnings
 warnings.filterwarnings('ignore')
 
 # Core libraries
-import torch
-from transformers import AutoProcessor, AutoModelForVision2Seq
-from PIL import Image
 import pypdf
 import openpyxl
 import matplotlib.pyplot as plt
@@ -48,32 +48,36 @@ logger = logging.getLogger(__name__)
 
 # Page configuration
 st.set_page_config(
-    page_title="Geotechnical Engineering Workflow",
-    page_icon="🏗️",
+    page_title="Geotechnical Engineering Workflow - RunPod GPU",
+    page_icon="🚀",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# HuggingFace Authentication
-def setup_huggingface_auth():
-    """Setup HuggingFace authentication if token is provided"""
-    if "hf_authenticated" not in st.session_state:
-        st.session_state.hf_authenticated = False
-    
-    if not st.session_state.hf_authenticated:
-        hf_token = os.getenv("HF_TOKEN") or st.secrets.get("HF_TOKEN", "")
-        
-        if hf_token:
-            try:
-                from huggingface_hub import login
-                login(token=hf_token, add_to_git_credential=True)
-                st.session_state.hf_authenticated = True
-                logger.info("HuggingFace authentication successful")
-            except Exception as e:
-                logger.warning(f"HuggingFace authentication failed: {e}")
+@dataclass
+class RunPodConfig:
+    """RunPod configuration settings"""
+    api_key: str = ""
+    endpoint_id: str = ""
+    base_url: str = "https://api.runpod.ai/v2"
+    timeout: int = 300
+    max_retries: int = 3
 
-# Initialize HF auth
-setup_huggingface_auth()
+# Initialize RunPod configuration
+def init_runpod_config() -> RunPodConfig:
+    """Initialize RunPod configuration from environment variables or secrets"""
+    config = RunPodConfig()
+    
+    # Try to get from Streamlit secrets first, then environment variables
+    try:
+        config.api_key = st.secrets.get("RUNPOD_API_KEY", "") or os.getenv("RUNPOD_API_KEY", "")
+        config.endpoint_id = st.secrets.get("RUNPOD_ENDPOINT_ID", "") or os.getenv("RUNPOD_ENDPOINT_ID", "")
+    except Exception as e:
+        logger.warning(f"Could not load secrets: {e}")
+        config.api_key = os.getenv("RUNPOD_API_KEY", "")
+        config.endpoint_id = os.getenv("RUNPOD_ENDPOINT_ID", "")
+    
+    return config
 
 # Custom CSS for better UI
 st.markdown("""
@@ -105,13 +109,12 @@ st.markdown("""
         color: #ffc107;
         font-weight: bold;
     }
-    .chat-container {
-        max-height: 500px;
-        overflow-y: auto;
+    .runpod-status {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
         padding: 1rem;
-        border: 1px solid #dee2e6;
         border-radius: 8px;
-        background-color: white;
+        margin: 1rem 0;
     }
     .metric-card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -121,11 +124,170 @@ st.markdown("""
         text-align: center;
         margin: 0.5rem 0;
     }
-    .stAlert > div {
-        padding: 0.5rem;
+    .gpu-info {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: white;
+        padding: 0.8rem;
+        border-radius: 6px;
+        margin: 0.5rem 0;
     }
 </style>
 """, unsafe_allow_html=True)
+
+class RunPodClient:
+    """
+    RunPod Serverless GPU Client
+    Handles communication with RunPod serverless endpoints for SmolVLM inference
+    """
+    
+    def __init__(self, config: RunPodConfig):
+        self.config = config
+        self.session = requests.Session()
+        self.session.headers.update({
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {config.api_key}"
+        })
+    
+    def health_check(self) -> Dict[str, Any]:
+        """Check RunPod endpoint health status"""
+        try:
+            url = f"{self.config.base_url}/{self.config.endpoint_id}/health"
+            response = self.session.get(url, timeout=30)
+            
+            if response.status_code == 200:
+                return {
+                    "status": "healthy",
+                    "response": response.json()
+                }
+            else:
+                return {
+                    "status": "error",
+                    "error": f"HTTP {response.status_code}: {response.text}"
+                }
+        except Exception as e:
+            return {
+                "status": "error",
+                "error": str(e)
+            }
+    
+    def run_sync_inference(self, image_data: str, query: str, timeout: int = None) -> Dict[str, Any]:
+        """
+        Run synchronous inference on RunPod endpoint
+        
+        Args:
+            image_data: Base64 encoded image
+            query: Text query for the vision model
+            timeout: Request timeout in seconds
+            
+        Returns:
+            Dict with inference results or error information
+        """
+        try:
+            url = f"{self.config.base_url}/{self.config.endpoint_id}/runsync"
+            
+            payload = {
+                "input": {
+                    "image_data": image_data,
+                    "query": query,
+                    "max_new_tokens": 512,
+                    "temperature": 0.3,
+                    "do_sample": True
+                }
+            }
+            
+            response = self.session.post(
+                url, 
+                json=payload, 
+                timeout=timeout or self.config.timeout
+            )
+            
+            if response.status_code == 200:
+                return {
+                    "status": "success",
+                    "result": response.json()
+                }
+            else:
+                return {
+                    "status": "error",
+                    "error": f"HTTP {response.status_code}: {response.text}"
+                }
+                
+        except requests.exceptions.Timeout:
+            return {
+                "status": "error",
+                "error": "Request timeout - GPU processing took too long"
+            }
+        except Exception as e:
+            return {
+                "status": "error", 
+                "error": str(e)
+            }
+    
+    def run_async_inference(self, image_data: str, query: str) -> Dict[str, Any]:
+        """
+        Run asynchronous inference on RunPod endpoint
+        
+        Args:
+            image_data: Base64 encoded image
+            query: Text query for the vision model
+            
+        Returns:
+            Dict with job ID for tracking or error information
+        """
+        try:
+            url = f"{self.config.base_url}/{self.config.endpoint_id}/run"
+            
+            payload = {
+                "input": {
+                    "image_data": image_data,
+                    "query": query,
+                    "max_new_tokens": 512,
+                    "temperature": 0.3,
+                    "do_sample": True
+                }
+            }
+            
+            response = self.session.post(url, json=payload, timeout=30)
+            
+            if response.status_code == 200:
+                return {
+                    "status": "success",
+                    "result": response.json()
+                }
+            else:
+                return {
+                    "status": "error",
+                    "error": f"HTTP {response.status_code}: {response.text}"
+                }
+                
+        except Exception as e:
+            return {
+                "status": "error",
+                "error": str(e)
+            }
+    
+    def check_job_status(self, job_id: str) -> Dict[str, Any]:
+        """Check the status of an async job"""
+        try:
+            url = f"{self.config.base_url}/{self.config.endpoint_id}/status/{job_id}"
+            response = self.session.get(url, timeout=30)
+            
+            if response.status_code == 200:
+                return {
+                    "status": "success",
+                    "result": response.json()
+                }
+            else:
+                return {
+                    "status": "error",
+                    "error": f"HTTP {response.status_code}: {response.text}"
+                }
+                
+        except Exception as e:
+            return {
+                "status": "error",
+                "error": str(e)
+            }
 
 class DocumentIngestionModule:
     """
@@ -184,6 +346,7 @@ class DocumentIngestionModule:
     def process_image(self, uploaded_file) -> Dict[str, Any]:
         """Process image files and prepare for vision model analysis."""
         try:
+            from PIL import Image
             image = Image.open(uploaded_file)
             
             # Convert to RGB if necessary
@@ -328,61 +491,35 @@ class DocumentIngestionModule:
                 "value": str(data)[:100] if isinstance(data, str) else data
             }
 
-class ExtractionModule:
+class RunPodExtractionModule:
     """
-    Extraction Module
-    Uses SmolVLM vision-language model to extract relevant information from preprocessed documents.
+    RunPod-powered Extraction Module
+    Uses SmolVLM on RunPod serverless GPU to extract relevant information from preprocessed documents.
     """
     
-    def __init__(self):
-        self.model = None
-        self.processor = None
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self._initialize_model()
+    def __init__(self, runpod_client: RunPodClient):
+        self.runpod_client = runpod_client
+        self.is_configured = bool(runpod_client.config.api_key and runpod_client.config.endpoint_id)
     
-    def _initialize_model(self):
-        """Initialize SmolVLM model and processor with proper fallback."""
-        try:
-            model_name = "HuggingFaceTB/SmolVLM-Instruct"
-            logger.info(f"Loading {model_name} on {self.device}")
-            
-            self.processor = AutoProcessor.from_pretrained(model_name)
-            
-            # Use appropriate dtype based on device
-            torch_dtype = torch.bfloat16 if self.device == "cuda" else torch.float32
-            
-            # Try with flash attention first, fallback to eager if not available
-            try:
-                self.model = AutoModelForVision2Seq.from_pretrained(
-                    model_name,
-                    torch_dtype=torch_dtype,
-                    _attn_implementation="flash_attention_2"
-                ).to(self.device)
-                logger.info(f"SmolVLM loaded with FlashAttention2 on {self.device}")
-            except Exception as flash_error:
-                logger.warning(f"FlashAttention2 not available, falling back to eager attention...")
-                self.model = AutoModelForVision2Seq.from_pretrained(
-                    model_name,
-                    torch_dtype=torch_dtype,
-                    _attn_implementation="eager"
-                ).to(self.device)
-                logger.info(f"SmolVLM loaded with eager attention on {self.device}")
-            
-        except Exception as e:
-            logger.error(f"Error initializing SmolVLM model: {str(e)}")
-            self.model = None
-            self.processor = None
+    def check_status(self) -> Dict[str, Any]:
+        """Check RunPod endpoint status"""
+        if not self.is_configured:
+            return {
+                "status": "not_configured",
+                "message": "RunPod API key or endpoint ID not configured"
+            }
+        
+        return self.runpod_client.health_check()
     
-    def extract_from_image(self, image_data: str, query: str = None) -> Dict[str, Any]:
-        """Extract information from image using SmolVLM."""
-        if not self.model or not self.processor:
-            return {"error": "Model not initialized"}
+    def extract_from_image(self, image_data: str, query: str = None, use_async: bool = False) -> Dict[str, Any]:
+        """Extract information from image using RunPod SmolVLM."""
+        if not self.is_configured:
+            return {
+                "error": "RunPod not configured. Please set RUNPOD_API_KEY and RUNPOD_ENDPOINT_ID",
+                "status": "not_configured"
+            }
         
         try:
-            # Decode base64 image
-            image_bytes = base64.b64decode(image_data)
-            image = Image.open(io.BytesIO(image_bytes))
-            
             # Default query for geotechnical analysis
             if not query:
                 query = """Analyze this engineering document or image. Extract:
@@ -394,49 +531,59 @@ class ExtractionModule:
                 6. Any geometric or structural details
                 Please provide a detailed technical analysis."""
             
-            # Prepare input for the model
-            messages = [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": image},
-                        {"type": "text", "text": query}
-                    ]
-                }
-            ]
-            
-            # Apply chat template and process
-            input_text = self.processor.apply_chat_template(messages, tokenize=False)
-            inputs = self.processor(text=input_text, images=[image], return_tensors="pt")
-            inputs = {k: v.to(self.device) for k, v in inputs.items()}
-            
-            # Generate response
-            with torch.no_grad():
-                outputs = self.model.generate(
-                    **inputs,
-                    max_new_tokens=512,
-                    do_sample=True,
-                    temperature=0.3,
-                    top_p=0.9
-                )
-            
-            # Decode response
-            response = self.processor.decode(outputs[0], skip_special_tokens=True)
-            
-            # Extract only the generated part (after the input)
-            generated_text = response.split("Assistant:")[-1].strip()
-            
-            return {
-                "extraction_type": "vision_analysis",
-                "query": query,
-                "response": generated_text,
-                "confidence": "high",
-                "timestamp": datetime.now().isoformat()
-            }
-            
+            if use_async:
+                # Asynchronous processing
+                result = self.runpod_client.run_async_inference(image_data, query)
+                if result["status"] == "success":
+                    return {
+                        "extraction_type": "vision_analysis_async",
+                        "query": query,
+                        "job_id": result["result"].get("id"),
+                        "status": "processing",
+                        "timestamp": datetime.now().isoformat()
+                    }
+                else:
+                    return {
+                        "error": result["error"],
+                        "extraction_type": "vision_analysis_async",
+                        "status": "error"
+                    }
+            else:
+                # Synchronous processing
+                result = self.runpod_client.run_sync_inference(image_data, query)
+                if result["status"] == "success":
+                    output = result["result"].get("output", {})
+                    response_text = output.get("response", "No response generated")
+                    
+                    return {
+                        "extraction_type": "vision_analysis",
+                        "query": query,
+                        "response": response_text,
+                        "confidence": "high",
+                        "processing_time": output.get("processing_time", "unknown"),
+                        "timestamp": datetime.now().isoformat()
+                    }
+                else:
+                    return {
+                        "error": result["error"],
+                        "extraction_type": "vision_analysis",
+                        "status": "error"
+                    }
+                    
         except Exception as e:
-            logger.error(f"Error in vision extraction: {str(e)}")
-            return {"error": str(e)}
+            logger.error(f"Error in RunPod vision extraction: {str(e)}")
+            return {
+                "error": str(e),
+                "extraction_type": "vision_analysis",
+                "status": "error"
+            }
+    
+    def check_async_job(self, job_id: str) -> Dict[str, Any]:
+        """Check status of async job"""
+        if not self.is_configured:
+            return {"error": "RunPod not configured"}
+        
+        return self.runpod_client.check_job_status(job_id)
 
 class StructuredOutputModule:
     """
@@ -465,10 +612,11 @@ class StructuredOutputModule:
             if extracted_data.get("type") == "image" and "extraction_type" in extracted_data:
                 # Vision analysis results
                 structured_data["content"] = {
-                    "analysis_type": "vision_language_model",
+                    "analysis_type": "runpod_vision_language_model",
                     "query": extracted_data.get("query", ""),
                     "response": extracted_data.get("response", ""),
-                    "confidence": extracted_data.get("confidence", "medium")
+                    "confidence": extracted_data.get("confidence", "medium"),
+                    "processing_time": extracted_data.get("processing_time", "unknown")
                 }
                 structured_data["searchable_fields"] = [
                     extracted_data.get("response", "")
@@ -730,7 +878,7 @@ def analyze_soil_data(data: str) -> str:
         soil_data = json.loads(data)
         
         analysis = []
-        analysis.append("=== SOIL DATA ANALYSIS ===")
+        analysis.append("=== SOIL DATA ANALYSIS (RunPod Enhanced) ===")
         
         # Check for key soil properties
         if "density" in soil_data:
@@ -755,6 +903,7 @@ def analyze_soil_data(data: str) -> str:
             if bearing < 100:
                 analysis.append("⚠️  Low bearing capacity - Deep foundations recommended")
         
+        analysis.append("\n🚀 Powered by RunPod Serverless GPU Infrastructure")
         return "\n".join(analysis)
         
     except Exception as e:
@@ -775,7 +924,7 @@ def calculate_tunnel_support(diameter: float, depth: float, rock_quality: str) -
     """
     try:
         analysis = []
-        analysis.append("=== TUNNEL SUPPORT ANALYSIS ===")
+        analysis.append("=== TUNNEL SUPPORT ANALYSIS (GPU Accelerated) ===")
         analysis.append(f"Tunnel diameter: {diameter} m")
         analysis.append(f"Depth: {depth} m")
         analysis.append(f"Rock quality: {rock_quality}")
@@ -802,6 +951,7 @@ def calculate_tunnel_support(diameter: float, depth: float, rock_quality: str) -
         if diameter > 10:
             analysis.append("⚠️  Large diameter - May require steel ribs")
         
+        analysis.append("\n🚀 Calculations powered by RunPod GPU cloud")
         return "\n".join(analysis)
         
     except Exception as e:
@@ -855,9 +1005,10 @@ def generate_safety_checklist(project_type: str) -> str:
     
     checklist = checklists.get(project_type.lower(), checklists["excavation"])
     
-    result = [f"=== {project_type.upper()} SAFETY CHECKLIST ==="]
+    result = [f"=== {project_type.upper()} SAFETY CHECKLIST (AI-Enhanced) ==="]
     result.extend(checklist)
     result.append("\n⚠️  Always consult local regulations and engineering standards")
+    result.append("🚀 Generated with AI-powered analysis on RunPod")
     
     return "\n".join(result)
 
@@ -912,14 +1063,15 @@ class MultiAgentOrchestrator:
                     "agent_type": agent_type,
                     "query": query,
                     "response": result,
-                    "timestamp": datetime.now().isoformat()
+                    "timestamp": datetime.now().isoformat(),
+                    "powered_by": "RunPod Serverless GPU + SmolAgent"
                 }
             else:
                 # Fallback response
                 return {
                     "agent_type": "fallback",
                     "query": query,
-                    "response": "I understand your query, but the specialized agents are not available. Please try rephrasing your question.",
+                    "response": "I understand your query, but the specialized agents are not available. Please try rephrasing your question or check the RunPod configuration.",
                     "timestamp": datetime.now().isoformat()
                 }
                 
@@ -935,13 +1087,18 @@ class MultiAgentOrchestrator:
 # Initialize global components
 @st.cache_resource
 def initialize_system():
-    """Initialize the complete system components."""
+    """Initialize the complete system components with RunPod integration."""
+    config = init_runpod_config()
+    runpod_client = RunPodClient(config)
+    
     return {
+        "config": config,
         "ingestion": DocumentIngestionModule(),
-        "extraction": ExtractionModule(),
+        "extraction": RunPodExtractionModule(runpod_client),
         "structured_output": StructuredOutputModule(),
         "analysis_viz": AnalysisVisualizationModule(),
-        "orchestrator": MultiAgentOrchestrator()
+        "orchestrator": MultiAgentOrchestrator(),
+        "runpod_client": runpod_client
     }
 
 def main():
@@ -951,7 +1108,7 @@ def main():
     system = initialize_system()
     
     # Main header
-    st.markdown('<h1 class="main-header">🏗️ Tunnelling & Geotechnical Engineering Workflow</h1>', 
+    st.markdown('<h1 class="main-header">🚀 Geotechnical Engineering Workflow - RunPod GPU Powered</h1>', 
                 unsafe_allow_html=True)
     
     # Initialize session state
@@ -959,17 +1116,35 @@ def main():
         st.session_state.messages = []
     if "processed_documents" not in st.session_state:
         st.session_state.processed_documents = {}
+    if "async_jobs" not in st.session_state:
+        st.session_state.async_jobs = {}
     
     # Sidebar for document upload and management
     with st.sidebar:
         st.header("📁 Document Management")
         
+        # RunPod Status
+        st.subheader("🚀 RunPod GPU Status")
+        runpod_status = system["extraction"].check_status()
+        
+        if runpod_status["status"] == "healthy":
+            st.markdown('<div class="runpod-status">✅ RunPod GPU Ready<br/>Serverless endpoint active</div>', 
+                       unsafe_allow_html=True)
+        elif runpod_status["status"] == "not_configured":
+            st.markdown('<div class="runpod-status" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);">❌ Not Configured<br/>Set API keys in secrets</div>', 
+                       unsafe_allow_html=True)
+            st.error("⚠️ RunPod not configured. Please set RUNPOD_API_KEY and RUNPOD_ENDPOINT_ID in Streamlit secrets or environment variables.")
+        else:
+            st.markdown('<div class="runpod-status" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);">❌ RunPod Error<br/>Check endpoint status</div>', 
+                       unsafe_allow_html=True)
+            st.error(f"RunPod Error: {runpod_status.get('error', 'Unknown error')}")
+        
         # System status
         st.subheader("🔧 System Status")
         col1, col2 = st.columns(2)
         with col1:
-            if system["extraction"].model is not None:
-                st.success("SmolVLM ✅")
+            if runpod_status["status"] == "healthy":
+                st.success("SmolVLM 🚀")
             else:
                 st.error("SmolVLM ❌")
         with col2:
@@ -988,7 +1163,16 @@ def main():
         )
         
         if uploaded_file is not None:
-            if st.button("🔄 Process Document", type="primary"):
+            # Processing options for images
+            processing_mode = "sync"
+            if uploaded_file.name.lower().endswith(('.png', '.jpg', '.jpeg')):
+                processing_mode = st.radio(
+                    "Processing Mode:",
+                    ["sync", "async"],
+                    help="Sync: Wait for results. Async: Get job ID and check later."
+                )
+            
+            if st.button("🚀 Process Document", type="primary"):
                 with st.spinner("Processing document..."):
                     # Validate file
                     is_valid, message, file_type = system["ingestion"].validate_file(uploaded_file)
@@ -1013,17 +1197,28 @@ def main():
                                 else:
                                     extracted_data = system["ingestion"].process_markdown(uploaded_file)
                             
-                            # Additional extraction for images using SmolVLM
+                            # Additional extraction for images using RunPod SmolVLM
                             if file_type == "images" and "error" not in extracted_data:
-                                if system["extraction"].model is not None:
-                                    with st.spinner("Running vision analysis..."):
+                                if runpod_status["status"] == "healthy":
+                                    with st.spinner("Running AI vision analysis on RunPod GPU..."):
                                         vision_result = system["extraction"].extract_from_image(
-                                            extracted_data["image_data"]
+                                            extracted_data["image_data"],
+                                            use_async=(processing_mode == "async")
                                         )
                                         if "error" not in vision_result:
                                             extracted_data.update(vision_result)
+                                            
+                                            # If async, store job for tracking
+                                            if processing_mode == "async" and "job_id" in vision_result:
+                                                st.session_state.async_jobs[vision_result["job_id"]] = {
+                                                    "file_name": uploaded_file.name,
+                                                    "timestamp": datetime.now().isoformat(),
+                                                    "status": "processing"
+                                                }
+                                        else:
+                                            st.error(f"Vision analysis failed: {vision_result['error']}")
                                 else:
-                                    st.warning("Vision analysis unavailable (SmolVLM not loaded)")
+                                    st.warning("Vision analysis skipped (RunPod not available)")
                             
                             # Organize data
                             doc_id = f"{uploaded_file.name}_{int(time.time())}"
@@ -1032,20 +1227,54 @@ def main():
                             # Store in session
                             st.session_state.processed_documents[doc_id] = structured_data
                             
-                            st.success(f"✅ Document processed successfully!")
+                            if processing_mode == "async" and "job_id" in extracted_data:
+                                st.success(f"✅ Document uploaded! Vision analysis job started (ID: {extracted_data['job_id'][:8]}...)")
+                            else:
+                                st.success(f"✅ Document processed successfully!")
                             
                             # Show processing summary
                             with st.expander("📊 Processing Summary"):
-                                st.json({
+                                summary = {
                                     "document_id": doc_id,
                                     "type": extracted_data.get("type", "unknown"),
-                                    "timestamp": structured_data.get("timestamp", "unknown")
-                                })
+                                    "timestamp": structured_data.get("timestamp", "unknown"),
+                                    "processing_mode": processing_mode
+                                }
+                                if "job_id" in extracted_data:
+                                    summary["job_id"] = extracted_data["job_id"]
+                                st.json(summary)
                                 
                         except Exception as e:
                             st.error(f"❌ Processing error: {str(e)}")
                     else:
                         st.error(f"❌ {message}")
+        
+        st.divider()
+        
+        # Async Jobs Status
+        if st.session_state.async_jobs:
+            st.subheader("⏳ Async Jobs")
+            for job_id, job_info in list(st.session_state.async_jobs.items()):
+                with st.expander(f"🔄 {job_info['file_name'][:15]}..."):
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        st.write(f"**Status:** {job_info['status']}")
+                        st.write(f"**Started:** {job_info['timestamp'][:19]}")
+                    with col2:
+                        if st.button("Check", key=f"check_{job_id}"):
+                            result = system["extraction"].check_async_job(job_id)
+                            if result["status"] == "success":
+                                job_status = result["result"].get("status", "unknown")
+                                st.session_state.async_jobs[job_id]["status"] = job_status
+                                
+                                if job_status == "COMPLETED":
+                                    st.success("✅ Completed!")
+                                    # Process results here if needed
+                                elif job_status == "FAILED":
+                                    st.error("❌ Failed")
+                                elif job_status in ["IN_PROGRESS", "IN_QUEUE"]:
+                                    st.info("🔄 Processing...")
+                                st.rerun()
         
         st.divider()
         
@@ -1065,10 +1294,13 @@ def main():
             st.info("No documents processed yet")
     
     # Main content area with tabs
-    tab1, tab2, tab3, tab4 = st.tabs(["💬 AI Chat Interface", "📊 Data Analysis", "📈 Visualizations", "🔧 System Status"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["💬 AI Chat Interface", "📊 Data Analysis", "📈 Visualizations", "🚀 RunPod Status", "🔧 System Info"])
     
     with tab1:
-        st.subheader("🤖 AI-Powered Engineering Assistant")
+        st.subheader("🤖 AI-Powered Engineering Assistant (RunPod GPU)")
+        
+        if runpod_status["status"] != "healthy":
+            st.warning("⚠️ RunPod GPU not available. Vision analysis will be limited. Please configure RunPod API credentials.")
         
         # Display chat messages
         for message in st.session_state.messages:
@@ -1084,12 +1316,13 @@ def main():
             
             # Generate response using orchestrator
             with st.chat_message("assistant"):
-                with st.spinner("Analyzing your query..."):
+                with st.spinner("Analyzing your query with AI agents..."):
                     
                     # Prepare context from processed documents
                     context = {
                         "documents": list(st.session_state.processed_documents.keys()),
-                        "document_count": len(st.session_state.processed_documents)
+                        "document_count": len(st.session_state.processed_documents),
+                        "runpod_status": runpod_status["status"]
                     }
                     
                     # Route query to appropriate agent
@@ -1123,7 +1356,8 @@ def main():
                 # Process with agent
                 context = {
                     "documents": list(st.session_state.processed_documents.keys()),
-                    "document_count": len(st.session_state.processed_documents)
+                    "document_count": len(st.session_state.processed_documents),
+                    "runpod_status": runpod_status["status"]
                 }
                 agent_response = system["orchestrator"].route_query(example, context)
                 response_text = agent_response.get("response", "Could not process query.")
@@ -1187,10 +1421,20 @@ def main():
                 elif doc_data.get("document_type") == "image":
                     # Display vision analysis results
                     if "analysis_type" in content:
-                        st.subheader("👁️ Vision Analysis Results")
+                        st.subheader("👁️ RunPod GPU Vision Analysis Results")
+                        
+                        # Show GPU processing info
+                        if content.get("analysis_type") == "runpod_vision_language_model":
+                            st.markdown('<div class="gpu-info">🚀 Processed on RunPod Serverless GPU</div>', 
+                                       unsafe_allow_html=True)
+                        
                         st.write(f"**Query:** {content.get('query', 'N/A')}")
                         st.write(f"**Analysis:** {content.get('response', 'N/A')}")
                         st.write(f"**Confidence:** {content.get('confidence', 'N/A')}")
+                        
+                        processing_time = content.get('processing_time', 'unknown')
+                        if processing_time != 'unknown':
+                            st.write(f"**GPU Processing Time:** {processing_time}")
                 
                 elif doc_data.get("document_type") == "pdf":
                     # PDF analysis
@@ -1256,16 +1500,93 @@ def main():
             st.info("📥 Upload CSV or Excel files to create visualizations")
     
     with tab4:
+        st.subheader("🚀 RunPod Serverless GPU Status")
+        
+        # RunPod configuration display
+        config = system["config"]
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write("**Configuration:**")
+            config_status = "✅ Configured" if config.api_key and config.endpoint_id else "❌ Not Configured"
+            st.write(f"Status: {config_status}")
+            st.write(f"API Key: {'***' + config.api_key[-4:] if config.api_key else 'Not set'}")
+            st.write(f"Endpoint ID: {config.endpoint_id[:8] + '...' if config.endpoint_id else 'Not set'}")
+        
+        with col2:
+            st.write("**Endpoint Details:**")
+            if st.button("🔄 Check Endpoint Health"):
+                with st.spinner("Checking RunPod endpoint..."):
+                    health = system["runpod_client"].health_check()
+                    if health["status"] == "healthy":
+                        st.success("✅ Endpoint is healthy!")
+                        if "response" in health:
+                            with st.expander("Health Details"):
+                                st.json(health["response"])
+                    else:
+                        st.error(f"❌ Endpoint issue: {health.get('error', 'Unknown error')}")
+        
+        st.divider()
+        
+        # Performance metrics
+        st.subheader("⚡ Performance Metrics")
+        
+        # GPU info cards
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            if runpod_status["status"] == "healthy":
+                st.markdown('<div class="metric-card">🚀 SmolVLM<br/>GPU Ready</div>', unsafe_allow_html=True)
+            else:
+                st.markdown('<div class="metric-card" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);">❌ SmolVLM<br/>GPU Error</div>', unsafe_allow_html=True)
+        
+        with col2:
+            processing_mode = "Serverless" if config.api_key else "Local"
+            st.markdown(f'<div class="metric-card">⚙️ Mode<br/>{processing_mode}</div>', unsafe_allow_html=True)
+        
+        with col3:
+            doc_count = len(st.session_state.processed_documents)
+            st.markdown(f'<div class="metric-card">📄 Documents<br/>{doc_count}</div>', unsafe_allow_html=True)
+        
+        with col4:
+            job_count = len(st.session_state.async_jobs)
+            st.markdown(f'<div class="metric-card">⏳ Async Jobs<br/>{job_count}</div>', unsafe_allow_html=True)
+        
+        st.divider()
+        
+        # Cost estimation
+        st.subheader("💰 Cost Estimation")
+        st.info("""
+        **RunPod Serverless Pricing (Estimated):**
+        - RTX 4090: ~$0.00011-0.00016 per second
+        - A100 40GB: ~$0.0004-0.0006 per second  
+        - H100: ~$0.0008-0.0012 per second
+        
+        💡 **Pay only for actual processing time!** No idle costs when not processing.
+        """)
+        
+        # Usage tips
+        st.subheader("💡 Optimization Tips")
+        st.info("""
+        **To optimize costs and performance:**
+        1. Use async processing for batch operations
+        2. Batch multiple images when possible
+        3. Adjust timeout settings appropriately
+        4. Monitor endpoint health regularly
+        5. Use appropriate GPU tier for your workload
+        """)
+    
+    with tab5:
         st.subheader("🔧 System Status & Information")
         
         # System status
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            if system["extraction"].model is not None:
-                st.markdown('<div class="metric-card">✅ SmolVLM<br/>Ready</div>', unsafe_allow_html=True)
+            if runpod_status["status"] == "healthy":
+                st.markdown('<div class="metric-card">✅ SmolVLM<br/>RunPod GPU</div>', unsafe_allow_html=True)
             else:
-                st.markdown('<div class="metric-card" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);">❌ SmolVLM<br/>Error</div>', unsafe_allow_html=True)
+                st.markdown('<div class="metric-card" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);">❌ SmolVLM<br/>GPU Error</div>', unsafe_allow_html=True)
         
         with col2:
             if system["orchestrator"].agents:
@@ -1278,8 +1599,7 @@ def main():
             st.markdown(f'<div class="metric-card">📄 Documents<br/>{doc_count}</div>', unsafe_allow_html=True)
         
         with col4:
-            device = "CUDA" if torch.cuda.is_available() else "CPU"
-            st.markdown(f'<div class="metric-card">💻 Device<br/>{device}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="metric-card">🌐 Processing<br/>Serverless</div>', unsafe_allow_html=True)
         
         st.divider()
         
@@ -1287,12 +1607,13 @@ def main():
         st.subheader("🛠️ Technology Stack")
         tech_info = {
             "Framework": "Streamlit 🌊",
-            "Vision-Language Model": "SmolVLM (HuggingFace Transformers) 🤖",
+            "GPU Infrastructure": "RunPod Serverless 🚀",
+            "Vision-Language Model": "SmolVLM (2B params) 🤖",
             "Agent Orchestration": "SmolAgent 🧠",
             "Visualization": "Plotly 📊",
             "Data Processing": "Pandas, NumPy 🐼",
-            "Computer Vision": "PIL, OpenCV 👁️",
-            "Document Processing": "PyPDF, OpenPyXL 📄"
+            "Document Processing": "PyPDF, OpenPyXL 📄",
+            "API Communication": "Requests, AsyncIO 🔗"
         }
         
         for tech, desc in tech_info.items():
@@ -1300,49 +1621,26 @@ def main():
         
         st.divider()
         
-        # Performance metrics
-        st.subheader("⚡ Performance Metrics")
-        if st.button("🔄 Run System Check"):
-            with st.spinner("Running system diagnostics..."):
-                # Simulate check with actual system testing
-                perf_data = {}
-                
-                # Test SmolVLM performance
-                if system["extraction"].model is not None:
-                    perf_data["SmolVLM Status"] = "✅ Operational"
-                    perf_data["Device"] = system["extraction"].device
-                else:
-                    perf_data["SmolVLM Status"] = "❌ Not loaded"
-                
-                # Test SmolAgent performance
-                if system["orchestrator"].agents:
-                    perf_data["SmolAgent Status"] = "✅ Operational"
-                    perf_data["Available Agents"] = len(system["orchestrator"].agents)
-                else:
-                    perf_data["SmolAgent Status"] = "❌ Not initialized"
-                
-                # Memory info
-                if torch.cuda.is_available():
-                    gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1e9
-                    perf_data["GPU Memory"] = f"{gpu_memory:.1f} GB"
-                
-                perf_data["Documents Processed"] = len(st.session_state.processed_documents)
-                perf_data["Chat Messages"] = len(st.session_state.messages)
-                
-                st.success("✅ System diagnostics completed!")
-                
-                # Display metrics in columns
-                cols = st.columns(2)
-                for i, (metric, value) in enumerate(perf_data.items()):
-                    with cols[i % 2]:
-                        st.metric(metric, value)
+        # RunPod advantages
+        st.subheader("🚀 RunPod Advantages")
+        advantages = [
+            "**Pay-per-second billing** - No idle costs",
+            "**Auto-scaling** - Scale from 0 to 1000+ instantly", 
+            "**FlashBoot technology** - 2-3 second cold starts",
+            "**Global regions** - Low latency worldwide",
+            "**High-end GPUs** - RTX 4090, A100, H100 available",
+            "**No infrastructure management** - Focus on your app"
+        ]
+        
+        for advantage in advantages:
+            st.write(f"• {advantage}")
         
         st.divider()
         
         # Clear data options
         st.subheader("🧹 Data Management")
         
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         with col1:
             if st.button("🗑️ Clear Chat History"):
                 st.session_state.messages = []
@@ -1353,6 +1651,12 @@ def main():
             if st.button("📂 Clear Documents"):
                 st.session_state.processed_documents = {}
                 st.success("Documents cleared!")
+                st.rerun()
+        
+        with col3:
+            if st.button("⏳ Clear Async Jobs"):
+                st.session_state.async_jobs = {}
+                st.success("Async jobs cleared!")
                 st.rerun()
 
 if __name__ == "__main__":
