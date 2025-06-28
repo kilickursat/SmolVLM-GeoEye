@@ -1,7 +1,7 @@
-# Tunnelling & Geotechnical Engineering Workflow - Docker Configuration
-# =====================================================================
+# Tunnelling & Geotechnical Engineering Workflow - Fixed Docker Configuration
+# =============================================================================
 
-FROM python:3.9-slim
+FROM python:3.11-slim
 
 # Set working directory
 WORKDIR /app
@@ -16,6 +16,9 @@ RUN apt-get update && apt-get install -y \
 
 # Copy requirements first for better caching
 COPY requirements.txt .
+
+# Upgrade pip first
+RUN pip install --upgrade pip
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
