@@ -1,0 +1,66 @@
+# RunPod Serverless Worker for SmolVLM - Optimized Container
+# ============================================================
+
+FROM runpod/pytorch:2.1.0-py3.10-cuda11.8.0-devel-ubuntu22.04
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    wget \
+    curl \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip and install core dependencies
+RUN pip install --upgrade pip setuptools wheel
+
+# Install PyTorch with CUDA support (if not already in base image)
+RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
+# Install transformers and related dependencies
+RUN pip install transformers>=4.36.0 \
+    accelerate>=0.25.0 \
+    tokenizers>=0.15.0 \
+    safetensors>=0.4.0 \
+    huggingface-hub>=0.19.0
+
+# Install image processing dependencies
+RUN pip install Pillow>=9.0.0 \
+    requests>=2.28.0
+
+# Install RunPod SDK
+RUN pip install runpod>=1.7.0
+
+# Optional: Install flash-attention for better performance (may fail on some GPUs)
+RUN pip install flash-attn>=2.5.0 --no-build-isolation || echo "Flash attention installation failed, continuing without it"
+
+# Copy the worker script
+COPY runpod_worker.py /app/
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV TRANSFORMERS_CACHE=/app/cache
+ENV HF_HOME=/app/cache
+ENV TORCH_HOME=/app/cache
+
+# Create cache directory
+RUN mkdir -p /app/cache
+
+# Pre-download model (optional - reduces cold start time)
+# Uncomment the following lines to pre-download the model
+# RUN python -c "from transformers import AutoProcessor, AutoModelForVision2Seq; \
+#     AutoProcessor.from_pretrained('HuggingFaceTB/SmolVLM-Instruct'); \
+#     AutoModelForVision2Seq.from_pretrained('HuggingFaceTB/SmolVLM-Instruct')"
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD python -c "import requests; requests.get('http://localhost:8000/health', timeout=5)" || exit 1
+
+# Expose port (RunPod handles this automatically)
+EXPOSE 8000
+
+# Run the worker
+CMD ["python", "-u", "/app/runpod_worker.py"]
