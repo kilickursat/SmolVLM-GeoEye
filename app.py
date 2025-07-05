@@ -1169,31 +1169,63 @@ class GeotechnicalMultiAgentOrchestrator:
 
             
             @tool
-            def calculate_tunnel_support(diameter: float, soil_type: str) -> str:
+            def calculate_tunnel_support(diameter: float, soil_type: str, rock_quality: str, depth: float) -> str:
                 """
-                Calculate tunnel support requirements.
+                Calculate tunnel support requirements based on tunnel geometry and ground conditions.
+            
                 Args:
-                    soil_type: The type of soil (e.g. clay, sand).
+                    diameter: The tunnel diameter in meters.
+                    soil_type: The type of soil or rock (e.g., clay, sand, granite).
+                    rock_quality: Ground quality descriptor (e.g., "good", "fair", "poor").
+                    depth: Depth of the tunnel below surface in meters.
+            
+                Returns:
+                    A recommendation string specifying support type (light, moderate, heavy) and details.
                 """
-                # Simplified calculation
-                if rock_quality.lower() == "good":
-                    support = "Light support: Rock bolts at 2m spacing"
-                elif rock_quality.lower() == "fair":
-                    support = "Moderate support: Rock bolts at 1.5m spacing with mesh"
+                rq = rock_quality.lower()
+                if rq == "good":
+                    support = "Light support: Rock bolts at 2 m spacing"
+                elif rq == "fair":
+                    support = "Moderate support: Rock bolts at 1.5 m spacing with mesh"
                 else:
                     support = "Heavy support: Steel sets with lagging"
-                
-                return f"For a {diameter}m diameter tunnel at {depth}m depth in {rock_quality} rock: {support}"
+            
+                return (
+                    f"For a {diameter} m diameter tunnel at {depth} m depth "
+                    f"in {soil_type} with {rock_quality} rock quality: {support}"
+                )
             
             @tool
             def generate_safety_checklist(project_type: str) -> str:
-                """Generate comprehensive safety protocols."""
+                """
+                Generate a safety protocol checklist based on the project type.
+            
+                Args:
+                    project_type: The geotechnical project type ("excavation", "tunneling", "foundation").
+            
+                Returns:
+                    A safety checklist string appropriate for the specified project type.
+                """
                 checklists = {
-                    "excavation": "1. Check utilities before digging\n2. Shore/slope as required\n3. Daily inspections\n4. Access/egress every 25ft",
-                    "tunneling": "1. Ground monitoring system\n2. Ventilation check\n3. Emergency procedures\n4. Face stability monitoring",
-                    "foundation": "1. Soil bearing verification\n2. Dewatering if needed\n3. Concrete quality control\n4. Settlement monitoring"
+                    "excavation": (
+                        "1. Check utilities before digging\n"
+                        "2. Shore/slope as required\n"
+                        "3. Daily inspections\n"
+                        "4. Access/egress every 25 ft"
+                    ),
+                    "tunneling": (
+                        "1. Ground monitoring system\n"
+                        "2. Ventilation check\n"
+                        "3. Emergency procedures\n"
+                        "4. Face stability monitoring"
+                    ),
+                    "foundation": (
+                        "1. Soil bearing verification\n"
+                        "2. Dewatering if needed\n"
+                        "3. Concrete quality control\n"
+                        "4. Settlement monitoring"
+                    ),
                 }
-                
                 return checklists.get(project_type.lower(), "General safety protocols required")
             
             # Create specialized agents
