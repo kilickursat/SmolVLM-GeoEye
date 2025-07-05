@@ -36,7 +36,7 @@ import re
 # SmolAgent imports
 # from smolagents import tool, ToolCallingAgent, HfApiModel
 # NEW - Correct
-from smolagents import CodeAgent, TransformersModel, DuckDuckGoSearchTool, InferenceClientModel
+from smolagents import CodeAgent, TransformersModel, DuckDuckGoSearchTool, InferenceClientModel, tool
 
 
 # Configure logging
