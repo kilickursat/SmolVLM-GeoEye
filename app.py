@@ -33,11 +33,16 @@ import io
 from dotenv import load_dotenv
 import re
 
-# SmolAgent imports
-# from smolagents import tool, ToolCallingAgent, HfApiModel
-# NEW - Correct
-from smolagents import CodeAgent, TransformersModel, DuckDuckGoSearchTool, InferenceClientModel, tool,ToolCallingAgent,PromptTemplates
-
+# SmolAgent imports - Updated for latest API
+from smolagents import (
+    CodeAgent, 
+    ToolCallingAgent, 
+    InferenceClientModel, 
+    TransformersModel, 
+    DuckDuckGoSearchTool, 
+    tool,
+    PromptTemplates
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -1141,6 +1146,77 @@ class GeotechnicalVisualizationModule:
         
         return fig
 
+# Define specialized tools for geotechnical analysis
+@tool
+def analyze_soil_data(data: str) -> str:
+    """
+    Analyze soil test data and provide engineering insights.
+
+    Args:
+        data: A string containing raw soil testing results.
+    """
+    return f"Analyzing soil data: {data[:100]}… Based on the data, the soil appears to have moderate bearing capacity."
+
+@tool
+def calculate_tunnel_support(diameter: float, soil_type: str, rock_quality: str, depth: float) -> str:
+    """
+    Calculate tunnel support requirements based on tunnel geometry and ground conditions.
+
+    Args:
+        diameter: The tunnel diameter in meters.
+        soil_type: The type of soil or rock (e.g., clay, sand, granite).
+        rock_quality: Ground quality descriptor (e.g., "good", "fair", "poor").
+        depth: Depth of the tunnel below surface in meters.
+
+    Returns:
+        A recommendation string specifying support type (light, moderate, heavy) and details.
+    """
+    rq = rock_quality.lower()
+    if rq == "good":
+        support = "Light support: Rock bolts at 2 m spacing"
+    elif rq == "fair":
+        support = "Moderate support: Rock bolts at 1.5 m spacing with mesh"
+    else:
+        support = "Heavy support: Steel sets with lagging"
+
+    return (
+        f"For a {diameter} m diameter tunnel at {depth} m depth "
+        f"in {soil_type} with {rock_quality} rock quality: {support}"
+    )
+
+@tool
+def generate_safety_checklist(project_type: str) -> str:
+    """
+    Generate a safety protocol checklist based on the project type.
+
+    Args:
+        project_type: The geotechnical project type ("excavation", "tunneling", "foundation").
+
+    Returns:
+        A safety checklist string appropriate for the specified project type.
+    """
+    checklists = {
+        "excavation": (
+            "1. Check utilities before digging\n"
+            "2. Shore/slope as required\n"
+            "3. Daily inspections\n"
+            "4. Access/egress every 25 ft"
+        ),
+        "tunneling": (
+            "1. Ground monitoring system\n"
+            "2. Ventilation check\n"
+            "3. Emergency procedures\n"
+            "4. Face stability monitoring"
+        ),
+        "foundation": (
+            "1. Soil bearing verification\n"
+            "2. Dewatering if needed\n"
+            "3. Concrete quality control\n"
+            "4. Settlement monitoring"
+        ),
+    }
+    return checklists.get(project_type.lower(), "General safety protocols required")
+
 class GeotechnicalMultiAgentOrchestrator:
     """Orchestrates multiple agents for geotechnical analysis"""
     
@@ -1151,148 +1227,47 @@ class GeotechnicalMultiAgentOrchestrator:
         self._initialize_agents()
     
     def _initialize_agents(self):
+        """Initialize geotechnical agents with updated smolagent API"""
         try:
-            # Load your inference client model (Hugging Face, Ollama, etc.)
+            # Initialize the model
             model = InferenceClientModel(model_id=self.model_id, token=self.hf_token)
-    
-            # Shared prompt template for your agents
+            
+            # Create custom prompt templates for geotechnical engineering
             prompt_templates = PromptTemplates(
                 system_prompt=(
-                    "You are a specialized geotechnical AI assistant. "
+                    "You are a specialized geotechnical engineering AI assistant. "
                     "Use your tools carefully to answer queries about soil analysis, tunneling support, or safety procedures. "
-                    "{{tool_descriptions}}{{managed_agents_description}}"
-                )
+                    "Always provide specific numerical values when available and cite engineering standards when appropriate.\n\n"
+                    "{{tool_descriptions}}"
+                ),
+                user_prompt="{{task}}",
+                planning_prompt="Plan your approach to: {{task}}"
             )
-    
-            # Agent 1: Soil analyst using JSON tool calls
+            
+            # Create specialized agents with updated API
             self.agents["soil_analyst"] = ToolCallingAgent(
                 tools=[analyze_soil_data],
                 model=model,
-                prompt_templates=prompt_templates,
-                planning_interval=2
+                prompt_templates=prompt_templates
             )
-    
-            # Agent 2: Tunnel engineer using code-based tool calls
+            
             self.agents["tunnel_engineer"] = CodeAgent(
                 tools=[calculate_tunnel_support],
                 model=model,
-                prompt_templates=prompt_templates,
-                planning_interval=2,
-                additional_authorized_imports=[],  # authorize needed imports
-                use_e2b_executor=False,
-                stream_outputs=False,
-            )
-    
-            # Agent 3: Safety officer using JSON tool calls
-            self.agents["safety_officer"] = ToolCallingAgent(
-                tools=[generate_safety_checklist],
-                model=model,
-                prompt_templates=prompt_templates,
-                planning_interval=2
-            )
-    
-            logging.info("Geotechnical agents initialized successfully")
-    
-        except Exception as e:
-            logging.error(f"Failed to initialize agents: {e}")
-            self.agents = {}
-            
-            # Define specialized tools for geotechnical analysis
-            @tool
-            def analyze_soil_data(data: str) -> str:
-                """
-                Analyze soil test data and provide engineering insights.
-            
-                Args:
-                    data: A string containing raw soil testing results.
-                """
-                return f"Analyzing soil data: {data[:100]}… Based on the data, the soil appears to have moderate bearing capacity."
-
-            
-            @tool
-            def calculate_tunnel_support(diameter: float, soil_type: str, rock_quality: str, depth: float) -> str:
-                """
-                Calculate tunnel support requirements based on tunnel geometry and ground conditions.
-            
-                Args:
-                    diameter: The tunnel diameter in meters.
-                    soil_type: The type of soil or rock (e.g., clay, sand, granite).
-                    rock_quality: Ground quality descriptor (e.g., "good", "fair", "poor").
-                    depth: Depth of the tunnel below surface in meters.
-            
-                Returns:
-                    A recommendation string specifying support type (light, moderate, heavy) and details.
-                """
-                rq = rock_quality.lower()
-                if rq == "good":
-                    support = "Light support: Rock bolts at 2 m spacing"
-                elif rq == "fair":
-                    support = "Moderate support: Rock bolts at 1.5 m spacing with mesh"
-                else:
-                    support = "Heavy support: Steel sets with lagging"
-            
-                return (
-                    f"For a {diameter} m diameter tunnel at {depth} m depth "
-                    f"in {soil_type} with {rock_quality} rock quality: {support}"
-                )
-            
-            @tool
-            def generate_safety_checklist(project_type: str) -> str:
-                """
-                Generate a safety protocol checklist based on the project type.
-            
-                Args:
-                    project_type: The geotechnical project type ("excavation", "tunneling", "foundation").
-            
-                Returns:
-                    A safety checklist string appropriate for the specified project type.
-                """
-                checklists = {
-                    "excavation": (
-                        "1. Check utilities before digging\n"
-                        "2. Shore/slope as required\n"
-                        "3. Daily inspections\n"
-                        "4. Access/egress every 25 ft"
-                    ),
-                    "tunneling": (
-                        "1. Ground monitoring system\n"
-                        "2. Ventilation check\n"
-                        "3. Emergency procedures\n"
-                        "4. Face stability monitoring"
-                    ),
-                    "foundation": (
-                        "1. Soil bearing verification\n"
-                        "2. Dewatering if needed\n"
-                        "3. Concrete quality control\n"
-                        "4. Settlement monitoring"
-                    ),
-                }
-                return checklists.get(project_type.lower(), "General safety protocols required")
-            
-            # Create specialized agents
-            self.agents["soil_analyst"] = ToolCallingAgent(
-                tools=[analyze_soil_data],
-                model=model,
-                system_prompt="You are a geotechnical engineer specializing in soil mechanics and foundation engineering."
-            )
-            
-            self.agents["tunnel_engineer"] = ToolCallingAgent(
-                tools=[calculate_tunnel_support],
-                model=model,
-                system_prompt="You are a tunnel engineering specialist with expertise in rock mechanics and support systems."
+                prompt_templates=prompt_templates
             )
             
             self.agents["safety_officer"] = ToolCallingAgent(
                 tools=[generate_safety_checklist],
                 model=model,
-                system_prompt="You are a construction safety specialist focused on geotechnical projects."
+                prompt_templates=prompt_templates
             )
             
             logger.info("Geotechnical agents initialized successfully")
             
         except Exception as e:
             logger.error(f"Failed to initialize agents: {str(e)}")
-            # Create fallback agents without tools
+            # Create fallback system without agents
             self.agents = {}
     
     def route_geotechnical_query(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
@@ -1381,7 +1356,7 @@ Please answer the user's question specifically using the information extracted f
                 return {
                     "agent_type": "fallback",
                     "query": query,
-                    "response": "Please upload documents and ask questions about the content.",
+                    "response": "I'm having trouble with the AI agents. Please upload documents and try asking questions about geotechnical engineering topics.",
                     "timestamp": datetime.now().isoformat(),
                     "domain": "Geotechnical Engineering",
                     "document_based": False
@@ -1392,7 +1367,7 @@ Please answer the user's question specifically using the information extracted f
             return {
                 "agent_type": "error",
                 "query": query,
-                "response": f"I encountered an error processing your query. Please ensure you have uploaded documents.",
+                "response": f"I encountered an error processing your query: {str(e)}. Please ensure you have uploaded documents and try again.",
                 "timestamp": datetime.now().isoformat(),
                 "domain": "Geotechnical Engineering",
                 "document_based": False
