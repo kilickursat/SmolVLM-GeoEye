@@ -34,7 +34,10 @@ from dotenv import load_dotenv
 import re
 
 # SmolAgent imports
-from smolagents import tool, ToolCallingAgent, HfApiModel
+# from smolagents import tool, ToolCallingAgent, HfApiModel
+# NEW - Correct
+from smolagents import tool, ToolCallingAgent
+from smolagents.models.huggingface import HfApiModel
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
