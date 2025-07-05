@@ -36,7 +36,7 @@ import re
 # SmolAgent imports
 # from smolagents import tool, ToolCallingAgent, HfApiModel
 # NEW - Correct
-from smolagents import CodeAgent, TransformersModel, DuckDuckGoSearchTool
+from smolagents import CodeAgent, TransformersModel, DuckDuckGoSearchTool, InferenceClientModel
 
 
 # Configure logging
@@ -1154,7 +1154,7 @@ class GeotechnicalMultiAgentOrchestrator:
         """Initialize specialized geotechnical agents"""
         try:
             # Create model instance
-            model = HfApiModel(model_id=self.model_id, token=self.hf_token)
+            model = InferenceClientModel(model_id=self.model_id, token=self.hf_token)
             
             # Define specialized tools for geotechnical analysis
             @tool
