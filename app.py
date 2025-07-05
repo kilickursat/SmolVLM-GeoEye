@@ -36,8 +36,8 @@ import re
 # SmolAgent imports
 # from smolagents import tool, ToolCallingAgent, HfApiModel
 # NEW - Correct
-from smolagents import tool, ToolCallingAgent
-from smolagents.models.huggingface import HfApiModel
+from smolagents import CodeAgent, DuckDuckGoSearchTool, HfApiModel
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
