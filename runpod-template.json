@@ -1,0 +1,78 @@
+{
+  "name": "SmolVLM-GeoEye",
+  "description": "Geotechnical Engineering Vision-Language Model for document analysis",
+  "container": {
+    "image": "your-registry/smolvlm-geoeye-runpod:latest",
+    "command": "python",
+    "args": ["runpod_worker.py"]
+  },
+  "gpu": {
+    "type": "RTX 4090",
+    "count": 1
+  },
+  "scaling": {
+    "minWorkers": 0,
+    "maxWorkers": 10,
+    "idleTimeout": 5,
+    "scalingModifier": 1.0
+  },
+  "runtime": {
+    "flashBoot": true,
+    "gpuTypes": ["RTX 4090", "RTX 4080", "A100", "H100"],
+    "containerDiskSize": 20
+  },
+  "environment": {
+    "MODEL_NAME": "HuggingFaceTB/SmolVLM-Instruct",
+    "MAX_NEW_TOKENS": "512",
+    "TEMPERATURE": "0.3",
+    "DO_SAMPLE": "true",
+    "TOP_P": "0.9",
+    "BATCH_SIZE": "1",
+    "DEVICE": "cuda",
+    "TORCH_DTYPE": "bfloat16",
+    "USE_FLASH_ATTENTION": "true",
+    "LOG_LEVEL": "INFO"
+  },
+  "health": {
+    "path": "/health",
+    "port": 8000,
+    "initialDelaySeconds": 30,
+    "periodSeconds": 10,
+    "timeoutSeconds": 5,
+    "successThreshold": 1,
+    "failureThreshold": 3
+  },
+  "resources": {
+    "cpu": 4,
+    "memory": 16,
+    "ephemeralStorage": 10
+  },
+  "networking": {
+    "expose": true,
+    "port": 8000,
+    "protocol": "http"
+  },
+  "advanced": {
+    "enableLogging": true,
+    "logRetention": 7,
+    "enableMetrics": true,
+    "metricsPort": 9090,
+    "enableTracing": false,
+    "customStartupScript": "",
+    "volumeMounts": []
+  },
+  "cost": {
+    "spotInstance": true,
+    "priceLimit": 0.01,
+    "billingAlerts": {
+      "enabled": true,
+      "thresholds": [10, 50, 100, 500]
+    }
+  },
+  "tags": {
+    "project": "SmolVLM-GeoEye",
+    "domain": "geotechnical-engineering",
+    "model": "SmolVLM-Instruct",
+    "version": "1.0.0"
+  }
+}
