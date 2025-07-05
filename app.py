@@ -36,7 +36,7 @@ import re
 # SmolAgent imports
 # from smolagents import tool, ToolCallingAgent, HfApiModel
 # NEW - Correct
-from smolagents import CodeAgent, TransformersModel, DuckDuckGoSearchTool, InferenceClientModel, tool,ToolCallingAgent
+from smolagents import CodeAgent, TransformersModel, DuckDuckGoSearchTool, InferenceClientModel, tool,ToolCallingAgent,PromptTemplates
 
 
 # Configure logging
@@ -1151,10 +1151,51 @@ class GeotechnicalMultiAgentOrchestrator:
         self._initialize_agents()
     
     def _initialize_agents(self):
-        """Initialize specialized geotechnical agents"""
         try:
-            # Create model instance
+            # Load your inference client model (Hugging Face, Ollama, etc.)
             model = InferenceClientModel(model_id=self.model_id, token=self.hf_token)
+    
+            # Shared prompt template for your agents
+            prompt_templates = PromptTemplates(
+                system_prompt=(
+                    "You are a specialized geotechnical AI assistant. "
+                    "Use your tools carefully to answer queries about soil analysis, tunneling support, or safety procedures. "
+                    "{{tool_descriptions}}{{managed_agents_description}}"
+                )
+            )
+    
+            # Agent 1: Soil analyst using JSON tool calls
+            self.agents["soil_analyst"] = ToolCallingAgent(
+                tools=[analyze_soil_data],
+                model=model,
+                prompt_templates=prompt_templates,
+                planning_interval=2
+            )
+    
+            # Agent 2: Tunnel engineer using code-based tool calls
+            self.agents["tunnel_engineer"] = CodeAgent(
+                tools=[calculate_tunnel_support],
+                model=model,
+                prompt_templates=prompt_templates,
+                planning_interval=2,
+                additional_authorized_imports=[],  # authorize needed imports
+                use_e2b_executor=False,
+                stream_outputs=False,
+            )
+    
+            # Agent 3: Safety officer using JSON tool calls
+            self.agents["safety_officer"] = ToolCallingAgent(
+                tools=[generate_safety_checklist],
+                model=model,
+                prompt_templates=prompt_templates,
+                planning_interval=2
+            )
+    
+            logging.info("Geotechnical agents initialized successfully")
+    
+        except Exception as e:
+            logging.error(f"Failed to initialize agents: {e}")
+            self.agents = {}
             
             # Define specialized tools for geotechnical analysis
             @tool
