@@ -1,610 +1,325 @@
-# 🚀 Tunnelling & Geotechnical Engineering Workflow - RunPod GPU Powered
+# 🏗️ SmolVLM-GeoEye: Enhanced Geotechnical Engineering Workflow
 
-A next-generation multi-modal document processing system using **SmolVLM on RunPod Serverless GPU**, **SmolAgent**, and **Streamlit** for advanced geotechnical engineering workflows.
+> **🚀 MAJOR UPDATE v3.1.0** - All critical issues resolved with enhanced monitoring and visualization
 
-![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
-![Streamlit](https://img.shields.io/badge/Streamlit-1.30%2B-red)
-![RunPod](https://img.shields.io/badge/RunPod-Serverless%20GPU-purple)
-![SmolVLM](https://img.shields.io/badge/SmolVLM-2B%20VLM-orange)
-![License](https://img.shields.io/badge/License-GPL%20v3-green)
+## 🎯 Issue Resolution Summary
 
-## 🌟 Revolutionary Features
+### ✅ **RESOLVED ISSUES:**
 
-### 🚀 **RunPod Serverless GPU Integration**
-- **💰 Pay-per-Second Billing**: Only pay for actual GPU usage (no idle costs)
-- **⚡ FlashBoot Technology**: 2-3 second cold starts for instant availability
-- **🔥 Auto-Scaling**: Scale from 0 to 1000+ workers automatically
-- **🌍 Global Edge Network**: Deploy in 30+ regions worldwide
-- **🎯 Premium GPUs**: RTX 4090, A100, H100 available on-demand
+1. **📊 Numerical Data Visualization Fixed**
+   - Enhanced pattern matching for geotechnical parameters
+   - Guaranteed visualization of extracted numerical data
+   - Real-time statistical analysis and data display
+   - Interactive charts with proper scaling and labeling
 
-### 🤖 **Advanced AI-Powered Analysis**
-- **👁️ Vision-Language Model**: SmolVLM-Instruct (2B) optimized for engineering content
-- **🧠 Multi-Agent System**: SmolAgent orchestration with specialized engineering agents
-- **💬 Natural Language Interface**: Chat-based interaction for technical queries
-- **🔄 Async/Sync Processing**: Choose between immediate results or background processing
+2. **💰 RunPod Usage Monitoring Enhanced**
+   - Real-time cost tracking ($0.00/s issue resolved)
+   - Worker status monitoring and utilization metrics
+   - Performance analytics with historical trends
+   - Automated scaling recommendations
 
-### 📁 **Comprehensive Document Processing**
-- **📄 PDF Documents**: Technical reports, specifications, drawings
-- **🖼️ Images**: Engineering drawings, site photos, charts (PNG, JPG, JPEG)
-- **📊 Structured Data**: CSV, Excel files with test results and measurements
-- **📝 Text Files**: JSON, Markdown, plain text
+3. **🤖 SmolVLM Usage Visibility Improved**
+   - Clear SmolVLM branding throughout UI
+   - Usage statistics and success rate tracking
+   - Processing time and cost per request display
+   - Active status indicators and performance metrics
 
-### 🛠️ **Engineering-Specific Intelligence**
-- **🏗️ Soil Analysis Agent**: Automated soil test data interpretation
-- **🚇 Tunnel Engineering Agent**: Support calculations and safety assessments
-- **📈 Visualization Engine**: Interactive charts and statistical analysis
-- **⚠️ Safety Checklist Generator**: Project-specific safety protocols
+---
 
-## 🏗️ Architecture Overview
+## 🚀 Quick Start
 
-```mermaid
-graph TB
-    A[Streamlit Frontend] --> B[Document Ingestion]
-    B --> C[RunPod Serverless GPU]
-    C --> D[SmolVLM Analysis]
-    D --> E[SmolAgent Processing]
-    E --> F[Structured Output]
-    F --> G[Visualization & Chat]
-    
-    subgraph "RunPod Infrastructure"
-        C --> H[Auto-Scaling Workers]
-        H --> I[GPU Pool: RTX 4090/A100/H100]
-        I --> J[FlashBoot Cold Start]
-    end
-    
-    subgraph "AI Models"
-        D --> K[Vision Analysis]
-        E --> L[Engineering Agents]
-        L --> M[Soil Analysis]
-        L --> N[Tunnel Support]
-        L --> O[Safety Checklist]
-    end
-```
-
-## 🚀 Quick Start Guide
-
-### Prerequisites
-- Python 3.8+ (3.9+ recommended)
-- RunPod account ([Sign up for $25K free credits](https://runpod.io))
-- Docker (for deployment)
-- 4GB RAM minimum (8GB recommended)
-
-### 1. Clone and Setup Environment
-
+### 1. Install Dependencies
 ```bash
-git clone https://github.com/your-username/geotechnical-workflow.git
-cd geotechnical-workflow
-
-# Run automated setup
-chmod +x setup.sh
-./setup.sh
-
-# Or manual setup
-python quick_setup.py
+pip install -r requirements.txt
 ```
 
-### 2. Deploy SmolVLM to RunPod
-
-#### 2.1 Build and Deploy Container
+### 2. Configure Environment
 ```bash
-# Update registry name in deploy-runpod.sh
-nano deploy-runpod.sh  # Replace "your-registry" with your Docker Hub username
-
-# Deploy to RunPod
-chmod +x deploy-runpod.sh
-./deploy-runpod.sh all
+cp .env.example .env
+# Edit .env with your RunPod and HuggingFace tokens
 ```
 
-#### 2.2 Create RunPod Serverless Endpoint
-1. Go to [RunPod Serverless Console](https://runpod.io/console/serverless)
-2. Create new template using `runpod-template.json`
-3. Deploy endpoint with recommended settings:
-   - **GPU**: RTX 4090 (best price/performance) or A100 (high memory)
-   - **Min Workers**: 0 (cost optimization)
-   - **Max Workers**: 10 (adjust based on needs)
-   - **FlashBoot**: Enabled
-   - **Idle Timeout**: 5 seconds
-4. Note your **Endpoint ID** and create **API Key**
+### 3. Run Enhanced Application
+```bash
+streamlit run app.py
+```
 
-### 3. Configure Application
+### 4. Monitor RunPod Performance
+```bash
+python enhanced_monitor_runpod.py
+```
 
-Add to `.env` file:
-```env
-# RunPod Configuration (Required)
+---
+
+## 🔧 New Features & Enhancements
+
+### 📊 **Enhanced Data Analysis**
+- **Advanced Pattern Matching**: Extracts SPT values, bearing capacity, density, moisture content, and more
+- **Statistical Analysis**: Automatic calculation of min, max, mean, standard deviation
+- **Interactive Visualizations**: Dynamic charts that adapt to available data types
+- **Data Export**: Export extracted numerical data for further analysis
+
+### 💰 **Cost Tracking & Optimization**
+- **Real-time Cost Monitoring**: Track expenses per hour/day/month
+- **Worker Utilization Metrics**: Efficiency scoring and optimization suggestions
+- **Cost per Job Analysis**: Calculate ROI for each SmolVLM inference
+- **Historical Cost Trends**: SQLite database for persistent cost tracking
+
+### 🤖 **SmolVLM Performance Monitoring**
+- **Usage Statistics**: Query count, success rate, processing times
+- **Status Indicators**: Real-time RunPod and SmolVLM status display
+- **Performance Metrics**: Response times, worker availability, job queue status
+- **Alert System**: Notifications for performance issues and cost thresholds
+
+### 📈 **Advanced Visualizations**
+- **Depth Profile Charts**: SPT N-values vs depth with proper axis scaling
+- **Parameter Distribution**: Histograms and box plots for soil properties
+- **Correlation Analysis**: Interactive correlation matrices for parameter relationships
+- **Multi-document Analysis**: Combined visualizations across all uploaded documents
+
+---
+
+## 🏗️ Geotechnical Engineering Features
+
+### 📄 **Document Processing**
+- **PDF Analysis**: Extract text and numerical data from geotechnical reports
+- **Image Analysis**: SmolVLM vision AI analyzes engineering drawings and test results
+- **CSV/Excel Support**: Process laboratory test data and field measurements
+- **Multi-format Support**: JSON, Markdown, and plain text files
+
+### 🔍 **Data Extraction Capabilities**
+- **SPT Test Results**: N-values with depth information
+- **Soil Properties**: Density, moisture content, plasticity indices
+- **Bearing Capacity**: Ultimate and allowable bearing pressures
+- **Strength Parameters**: Cohesion, friction angle, UCS values
+- **Settlement Data**: Immediate and consolidation settlement values
+- **Rock Quality**: RQD values and rock strength parameters
+
+### 🎯 **Engineering Analysis**
+- **Soil Classification**: Automatic soil type identification
+- **Foundation Recommendations**: Based on extracted soil parameters
+- **Settlement Predictions**: Using consolidation and bearing capacity data
+- **Safety Factor Calculations**: For foundation design and stability analysis
+
+---
+
+## 📊 Usage Analytics Dashboard
+
+### Real-time Monitoring
+```
+🚀 RunPod Status: ACTIVE (2 workers ready)
+🤖 SmolVLM: 15 queries (93% success rate)
+💰 Cost: $0.0234 (12 jobs processed)
+📊 Data: 3 docs, 47 numerical values
+```
+
+### Performance Metrics
+- **Response Times**: Average processing time per document
+- **Worker Utilization**: Efficiency of GPU resource usage
+- **Cost Optimization**: Recommendations for scaling and cost reduction
+- **Success Rates**: SmolVLM inference success statistics
+
+---
+
+## 🔧 Configuration Guide
+
+### Environment Variables
+```bash
+# RunPod Configuration (Required for GPU processing)
 RUNPOD_API_KEY=your_runpod_api_key_here
 RUNPOD_ENDPOINT_ID=your_runpod_endpoint_id_here
 
-# Optional Configuration
+# HuggingFace Token (Required for SmolAgent)
 HF_TOKEN=your_huggingface_token_here
-ENVIRONMENT=production
-DEBUG=false
+
+# Optional Settings
+RUNPOD_TIMEOUT=300
+RUNPOD_MAX_RETRIES=3
+LOG_LEVEL=INFO
 ```
 
-### 4. Validate and Test Setup
-
+### Cost Management
 ```bash
-# Validate RunPod configuration
-python validate_runpod.py
+# Enable cost tracking and alerts
+ENABLE_COST_TRACKING=true
+COST_ALERT_THRESHOLD=100.0
 
-# Test RunPod integration
-python test_runpod.py --all
-
-# Start monitoring (optional)
-python monitor_runpod.py
+# Performance optimization
+MAX_WORKERS=10
+MIN_WORKERS=0
+BATCH_SIZE=1
 ```
 
-### 5. Launch Application
+---
 
+## 📈 Monitoring & Analytics
+
+### Enhanced RunPod Monitor
 ```bash
-# Activate virtual environment
-source geotechnical_env/bin/activate  # Linux/Mac
-# or
-geotechnical_env\Scripts\activate     # Windows
+# Real-time monitoring with cost analysis
+python enhanced_monitor_runpod.py
 
-# Run the application
-streamlit run app.py
+# Generate cost report
+python enhanced_monitor_runpod.py --report --hours 24
+
+# Single status check
+python enhanced_monitor_runpod.py --once
 ```
 
-The application will open at `http://localhost:8501` with full RunPod GPU acceleration!
+### Features
+- **Real-time Cost Tracking**: Monitor expenses as they occur
+- **Worker Status**: Live updates on GPU availability and utilization
+- **Performance Alerts**: Automatic notifications for issues
+- **Historical Analysis**: SQLite database for trend analysis
+- **Optimization Recommendations**: AI-powered scaling suggestions
 
-## 🌐 Deployment Options
+---
 
-### ⭐ **Streamlit Cloud** (Recommended)
-```bash
-# 1. Push to GitHub
-git add .
-git commit -m "Add RunPod integration"
-git push origin main
+## 🎨 User Interface Enhancements
 
-# 2. Deploy to Streamlit Cloud
-# - Connect repository at share.streamlit.io
-# - Add secrets in dashboard:
-#   RUNPOD_API_KEY = your_api_key
-#   RUNPOD_ENDPOINT_ID = your_endpoint_id
-# - Deploy with one click!
-```
+### Status Indicators
+- **🚀 RunPod Active**: Green pulsing indicator when GPU workers are ready
+- **🤖 SmolVLM Usage**: Purple indicator showing query count and success rate
+- **💰 Cost Tracker**: Orange indicator with real-time cost accumulation
+- **📊 Data Status**: Blue indicator showing documents and extracted values
 
-### 🚀 **Docker Deployment**
-```bash
-# Local deployment
-docker-compose up --build
+### Enhanced Tabs
+1. **💬 SmolVLM AI Chat**: Interactive Q&A with document context
+2. **📊 Enhanced Data Analysis**: Detailed numerical data breakdown
+3. **📈 Advanced Visualizations**: Interactive charts and correlations
+4. **🚀 System Performance**: Real-time monitoring dashboard
 
-# Production deployment
-docker-compose --profile production up -d
+---
 
-# With monitoring
-docker-compose --profile monitoring up -d
-```
+## 🔍 Troubleshooting
 
-### ☁️ **Cloud Platforms**
+### Common Issues
 
-#### Heroku
-```bash
-heroku create your-app-name
-heroku config:set RUNPOD_API_KEY=your_key
-heroku config:set RUNPOD_ENDPOINT_ID=your_endpoint
-git push heroku main
-```
-
-#### Google Cloud Run
-```bash
-gcloud run deploy geotechnical-workflow \
-  --source . \
-  --platform managed \
-  --region us-central1 \
-  --set-env-vars RUNPOD_API_KEY=your_key,RUNPOD_ENDPOINT_ID=your_endpoint
-```
-
-## 📖 Comprehensive Usage Guide
-
-### 🚀 **RunPod GPU Processing**
-
-#### Document Analysis Workflow
-1. **Upload Document**: Support for PDF, images, CSV, Excel, JSON, Markdown
-2. **Choose Processing Mode**:
-   - **Sync**: Wait for immediate results (best for single documents)
-   - **Async**: Background processing (best for batch operations)
-3. **AI Analysis**: SmolVLM performs vision analysis on RunPod GPU
-4. **Agent Processing**: SmolAgent routes queries to specialized engineering agents
-5. **Results**: View analysis, chat with documents, generate visualizations
-
-#### Processing Modes Comparison
-
-| Feature | Sync Processing | Async Processing |
-|---------|----------------|------------------|
-| **Response Time** | 3-8 seconds | Immediate job ID |
-| **Best For** | Single documents | Batch processing |
-| **Monitoring** | Real-time progress | Job status tracking |
-| **Cost** | Pay per request | Optimized for bulk |
-
-### 💬 **AI Chat Interface**
-
-Ask natural language questions:
-- **"Analyze the soil data from the uploaded CSV"**
-- **"Calculate tunnel support for 6m diameter at 30m depth in fair rock"**
-- **"Generate safety checklist for excavation project"**
-- **"What are the key structural details in this engineering drawing?"**
-- **"Compare bearing capacity values across all uploaded test results"**
-
-### 📊 **Advanced Analytics**
-
-#### Data Analysis Features
-- **Statistical Summaries**: Automated analysis of numerical data
-- **Correlation Analysis**: Identify relationships between variables
-- **Engineering Insights**: Domain-specific interpretations
-- **Trend Analysis**: Time-series analysis for monitoring data
-
-#### Visualization Options
-- **Interactive Charts**: Plotly-powered visualizations
-- **Engineering Plots**: Specialized charts for geotechnical data
-- **3D Visualizations**: Support for complex geometric data
-- **Export Options**: PNG, PDF, SVG formats
-
-## 🤖 Advanced AI Agent System
-
-### **RunPod Vision Agent**
-- **Model**: SmolVLM-Instruct (2B parameters)
-- **Capabilities**: 
-  - Engineering drawing analysis
-  - Technical specification extraction
-  - Safety assessment from images
-  - Material property identification
-  - Structural detail recognition
-- **Performance**: 7.5-16x faster than comparable models
-- **Memory**: Optimized for edge deployment
-
-### **Specialized Engineering Agents**
-
-#### Data Processing Agent
+#### Issue: No numerical data visualized
+**Solution**: ✅ **FIXED** - Enhanced pattern matching now extracts more data types
 ```python
-@tool
-def analyze_soil_data(data: str) -> str:
-    """Analyze soil test data and provide engineering insights."""
-    # Advanced soil analysis with AI-enhanced recommendations
+# New patterns detect:
+- "SPT N=25 at 3.5m depth"
+- "bearing capacity = 150 kPa"
+- "density = 1.85 g/cm³"
+- "moisture content = 12.5%"
 ```
 
-#### Engineering Analysis Agent
+#### Issue: RunPod showing $0.00/s
+**Solution**: ✅ **FIXED** - Real-time cost tracking and worker monitoring
+```bash
+# Use enhanced monitor
+python enhanced_monitor_runpod.py
+```
+
+#### Issue: SmolVLM usage not visible
+**Solution**: ✅ **FIXED** - Clear indicators throughout UI
+- Purple SmolVLM status cards
+- Usage statistics in real-time
+- Processing time display
+- Cost per request tracking
+
+### Performance Optimization
+1. **Worker Scaling**: Monitor utilization and scale based on demand
+2. **Cost Control**: Set alert thresholds and review daily reports
+3. **Data Quality**: Upload high-quality images and well-formatted documents
+4. **Batch Processing**: Process multiple documents in sequence for efficiency
+
+---
+
+## 📚 API Reference
+
+### Enhanced RunPod Client
 ```python
-@tool
-def calculate_tunnel_support(diameter: float, depth: float, rock_quality: str) -> str:
-    """Calculate tunnel support requirements with safety factors."""
-    # Tunnel engineering calculations with code compliance
+from app import EnhancedRunPodClient, Config
+
+# Initialize with cost tracking
+config = Config()
+client = EnhancedRunPodClient(config)
+
+# Run with tracking
+result = client.run_sync_with_tracking({
+    "image_data": base64_image,
+    "query": "Analyze geotechnical data",
+    "max_new_tokens": 512
+})
+
+# Check health with metrics
+health = client.enhanced_health_check()
+print(f"Workers ready: {health['workers']['ready']}")
+print(f"Cost per hour: ${health['cost_per_hour']:.4f}")
 ```
 
-#### Safety Assessment Agent
+### Data Extraction
 ```python
-@tool
-def generate_safety_checklist(project_type: str) -> str:
-    """Generate comprehensive safety protocols."""
-    # Project-specific safety recommendations
+from app import EnhancedGeotechnicalDataExtractor
+
+extractor = EnhancedGeotechnicalDataExtractor()
+data = extractor.extract_numerical_data_from_text(text)
+
+# Access extracted parameters
+spt_values = data['spt_values']
+bearing_capacity = data['bearing_capacity']
+soil_properties = data['density']
 ```
 
-## 🧪 Testing and Quality Assurance
-
-### **Automated Testing Suite**
-```bash
-# Connection testing
-python test_runpod.py --test-connection
-
-# Performance benchmarking
-python test_runpod.py --benchmark
-
-# Comprehensive testing
-python test_runpod.py --all
-
-# Continuous monitoring
-python test_runpod.py --monitor 300  # 5 minutes
-```
-
-### **Performance Benchmarks**
-
-| GPU Type | Cold Start | Inference Time | Cost per Request |
-|----------|------------|----------------|------------------|
-| RTX 4090 | 2-3s | 3-8s | $0.0003-0.0013 |
-| A100 40GB | 2-3s | 2-6s | $0.0012-0.0036 |
-| H100 | 2-3s | 1-4s | $0.0024-0.0048 |
-
-*Costs estimated for typical engineering document analysis queries*
-
-### **Quality Metrics**
-- **Model Accuracy**: 95%+ on engineering document analysis
-- **Uptime**: 99.9% availability with RunPod infrastructure
-- **Response Time**: 90th percentile under 8 seconds
-- **Error Rate**: <0.1% for properly formatted requests
-
-## 💰 Cost Optimization Strategies
-
-### **Smart Cost Management**
-1. **Auto-Scaling**: Set min workers to 0 for zero idle costs
-2. **FlashBoot**: Reduce cold start penalties
-3. **Batch Processing**: Group multiple documents for efficiency
-4. **Right-Sizing**: Choose appropriate GPU for workload
-5. **Monitoring**: Track usage patterns and optimize
-
-### **Estimated Monthly Costs**
-
-| Usage Level | Requests/Month | Est. GPU Time | Monthly Cost |
-|-------------|----------------|---------------|--------------|
-| **Light** | 100 | 20 minutes | $2-5 |
-| **Medium** | 1,000 | 3 hours | $15-40 |
-| **Heavy** | 10,000 | 30 hours | $150-400 |
-| **Enterprise** | 100,000+ | 300+ hours | $1,500+ |
-
-*Costs based on RTX 4090 pricing and typical engineering workloads*
-
-### **Cost Optimization Tips**
-```bash
-# Monitor real-time costs
-python monitor_runpod.py --cost-tracking
-
-# Optimize batch sizes
-python test_runpod.py --benchmark --batch-size 10
-
-# Analyze usage patterns
-python analyze_usage.py --period monthly
-```
-
-## 🔧 Advanced Configuration
-
-### **RunPod Endpoint Optimization**
-```json
-{
-  "gpu_type": "RTX 4090",
-  "min_workers": 0,
-  "max_workers": 10,
-  "idle_timeout": 5,
-  "flash_boot": true,
-  "environment": {
-    "MAX_NEW_TOKENS": "512",
-    "TEMPERATURE": "0.3",
-    "BATCH_SIZE": "1"
-  }
-}
-```
-
-### **Performance Tuning**
-```python
-# app.py configuration
-RUNPOD_CONFIG = {
-    "timeout": 300,
-    "max_retries": 3,
-    "batch_processing": True,
-    "enable_caching": True,
-    "compression": "gzip"
-}
-```
-
-### **Monitoring Configuration**
-```yaml
-# monitoring/prometheus.yml
-global:
-  scrape_interval: 15s
-
-scrape_configs:
-  - job_name: 'runpod-metrics'
-    static_configs:
-      - targets: ['localhost:8501']
-```
-
-## 📁 Project Structure
-
-```
-geotechnical-workflow/
-├── app.py                      # Main Streamlit application (RunPod integrated)
-├── runpod_worker.py           # SmolVLM worker for RunPod serverless
-├── requirements.txt           # Python dependencies
-├── requirements-runpod.txt    # RunPod worker dependencies
-├── Dockerfile                 # Streamlit app container
-├── Dockerfile.runpod         # RunPod worker container
-├── docker-compose.yml        # Multi-service deployment
-├── deploy-runpod.sh          # RunPod deployment automation
-├── setup.sh                  # Enhanced setup script
-├── validate_runpod.py        # Configuration validator
-├── test_runpod.py            # Comprehensive test suite
-├── monitor_runpod.py         # Monitoring utilities
-├── quick_setup.py            # Development environment setup
-├── .env.example              # Environment variables template
-├── runpod-template.json      # RunPod template configuration
-├── RUNPOD_DEPLOYMENT.md      # Detailed deployment guide
-├── DEPLOYMENT_CHECKLIST.md   # Pre-deployment checklist
-├── nginx/                    # Nginx configuration
-├── monitoring/               # Prometheus & Grafana configs
-└── docs/                     # Additional documentation
-```
-
-## 🔒 Security and Compliance
-
-### **Data Security**
-- **Encryption**: All data encrypted in transit (TLS 1.3)
-- **No Persistence**: RunPod doesn't store processed data
-- **Privacy**: 30-minute result retention maximum
-- **Compliance**: GDPR, SOC 2 compatible
-
-### **Access Control**
-```python
-# Secure API key management
-import os
-from cryptography.fernet import Fernet
-
-def secure_config():
-    key = os.environ.get('ENCRYPTION_KEY')
-    cipher = Fernet(key)
-    encrypted_api_key = os.environ.get('RUNPOD_API_KEY_ENCRYPTED')
-    return cipher.decrypt(encrypted_api_key.encode()).decode()
-```
-
-### **Best Practices**
-1. **Environment Variables**: Never commit API keys to version control
-2. **Token Rotation**: Regularly rotate RunPod API keys
-3. **Network Security**: Use VPC endpoints for production
-4. **Audit Logging**: Enable comprehensive request logging
-5. **Rate Limiting**: Implement request throttling
-
-## 🚨 Troubleshooting Guide
-
-### **Common Issues and Solutions**
-
-#### RunPod Integration Issues
-```bash
-# Check configuration
-python validate_runpod.py
-
-# Test connectivity
-curl -H "Authorization: Bearer $RUNPOD_API_KEY" \
-     "https://api.runpod.ai/v2/$RUNPOD_ENDPOINT_ID/health"
-
-# Monitor endpoint
-python monitor_runpod.py --once
-```
-
-#### Performance Issues
-```bash
-# Benchmark performance
-python test_runpod.py --benchmark
-
-# Check GPU utilization
-python test_runpod.py --monitor 60
-
-# Optimize settings
-nano runpod-template.json  # Adjust GPU type and workers
-```
-
-#### Application Errors
-```bash
-# Check logs
-streamlit run app.py --logger.level debug
-
-# Test individual components
-python -c "from app import RunPodExtractionModule; print('OK')"
-
-# Validate environment
-python -c "import os; print(os.environ.get('RUNPOD_API_KEY', 'Not set'))"
-```
-
-### **Error Code Reference**
-
-| Error Code | Meaning | Solution |
-|------------|---------|----------|
-| `401` | Invalid API key | Check RUNPOD_API_KEY |
-| `404` | Endpoint not found | Verify RUNPOD_ENDPOINT_ID |
-| `429` | Rate limited | Implement backoff strategy |
-| `500` | Server error | Check RunPod status page |
-| `503` | No workers available | Increase max_workers |
-
-### **Support Resources**
-- **RunPod Documentation**: [docs.runpod.io](https://docs.runpod.io)
-- **RunPod Discord**: [discord.gg/runpod](https://discord.gg/runpod)
-- **SmolVLM Issues**: [HuggingFace Model Card](https://huggingface.co/HuggingFaceTB/SmolVLM-Instruct)
-- **Project Issues**: [GitHub Issues](https://github.com/your-username/geotechnical-workflow/issues)
+---
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md).
-
-### **Development Workflow**
+### Development Setup
 ```bash
-# Setup development environment
-git clone https://github.com/your-username/geotechnical-workflow.git
-cd geotechnical-workflow
-python quick_setup.py
-
-# Create feature branch
-git checkout -b feature/your-feature
-
-# Make changes and test
-python test_runpod.py --all
-pytest tests/
-
-# Submit pull request
-git commit -m "Add your feature"
-git push origin feature/your-feature
+git clone https://github.com/kilickursat/SmolVLM-GeoEye.git
+cd SmolVLM-GeoEye
+pip install -r requirements.txt
+cp .env.example .env
 ```
 
-### **Code Quality Standards**
-- **Type Hints**: All functions must have type annotations
-- **Documentation**: Docstrings for all public methods
-- **Testing**: 90%+ test coverage required
-- **Formatting**: Black code formatter
-- **Linting**: Flake8 compliance
-
-## 📄 License
-
-This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **RunPod** for providing cutting-edge serverless GPU infrastructure
-- **HuggingFace** for SmolVLM and the transformers ecosystem
-- **Streamlit** for the intuitive web framework
-- **SmolAgent** for intelligent agent orchestration
-- **Engineering Community** for domain expertise and feedback
-
-## 📞 Support and Community
-
-- **Documentation**: [GitHub Wiki](https://github.com/your-username/geotechnical-workflow/wiki)
-- **RunPod Setup Guide**: [RUNPOD_DEPLOYMENT.md](RUNPOD_DEPLOYMENT.md)
-- **Issues**: [GitHub Issues](https://github.com/your-username/geotechnical-workflow/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-username/geotechnical-workflow/discussions)
-- **Community Discord**: [Join our Discord](https://discord.gg/your-server)
-
-## 🗺️ Roadmap
-
-### **Version 3.0 (Current - RunPod Integration)**
-- [x] RunPod serverless GPU integration
-- [x] Enhanced SmolVLM vision analysis
-- [x] Auto-scaling infrastructure
-- [x] Comprehensive testing suite
-- [x] Cost optimization tools
-
-### **Version 3.1 (Q2 2024)**
-- [ ] Multi-model support (GPT-4V, Claude Vision)
-- [ ] Enhanced document processing pipeline
-- [ ] Real-time collaboration features
-- [ ] Advanced caching and optimization
-- [ ] Mobile application support
-
-### **Version 3.2 (Q3 2024)**
-- [ ] 3D visualization capabilities
-- [ ] Database integration for persistent storage
-- [ ] REST API endpoints
-- [ ] Enterprise SSO integration
-- [ ] Advanced analytics dashboard
-
-### **Version 4.0 (Q4 2024)**
-- [ ] Multi-language support
-- [ ] Federated learning capabilities
-- [ ] Advanced safety AI models
-- [ ] Blockchain integration for audit trails
-- [ ] AR/VR visualization support
-
----
-
-## 🚀 **Ready to Transform Your Engineering Workflow?**
-
-1. **⭐ Star this repository** and join 1000+ engineers using AI-powered analysis
-2. **🚀 Deploy with RunPod Serverless GPU** for 10-100x performance boost
-3. **📁 Upload your first engineering document** and experience cutting-edge AI analysis
-4. **💬 Chat with your documents** using natural language processing
-5. **📊 Generate actionable insights** with automated analysis and visualizations
-
-### **Next Steps:**
+### Testing Enhanced Features
 ```bash
-# Get started in 5 minutes
-git clone https://github.com/your-username/geotechnical-workflow.git
-cd geotechnical-workflow
-chmod +x setup.sh && ./setup.sh
-# Configure RunPod credentials
+# Test data extraction
+python -c "from app import EnhancedGeotechnicalDataExtractor; print('✅ Enhanced extraction ready')"
+
+# Test monitoring
+python enhanced_monitor_runpod.py --once
+
+# Test visualization
 streamlit run app.py
 ```
 
-**Built with ❤️ for the Engineering Community**
+---
 
-**Powered by 🚀 RunPod Serverless GPU Technology**
+## 📜 License
 
-**Enhanced with 🤖 SmolVLM Vision Intelligence**
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-*Transform your geotechnical engineering workflow today. Experience the future of AI-powered document analysis with serverless GPU acceleration.*
+## 🔗 Links
 
-*For the latest updates and releases, visit our [GitHub repository](https://github.com/your-username/geotechnical-workflow) and join our [community Discord](https://discord.gg/your-server).*
+- **Repository**: [GitHub](https://github.com/kilickursat/SmolVLM-GeoEye)
+- **RunPod Platform**: [RunPod.io](https://runpod.io)
+- **SmolVLM Model**: [HuggingFace](https://huggingface.co/HuggingFaceTB/SmolVLM-Instruct)
+- **Issues**: [GitHub Issues](https://github.com/kilickursat/SmolVLM-GeoEye/issues)
+
+---
+
+## 📊 Version History
+
+### v3.1.0 - Enhanced Resolution Update
+- ✅ Fixed numerical data visualization issues
+- ✅ Implemented real-time RunPod cost monitoring
+- ✅ Enhanced SmolVLM usage visibility
+- 🔧 Added advanced performance analytics
+- 💰 Integrated cost optimization recommendations
+- 📈 Enhanced interactive visualizations
+
+### v3.0.0 - Initial Release
+- 🤖 SmolVLM integration with RunPod
+- 📄 Multi-format document processing
+- 🏗️ Geotechnical data extraction
+- 📊 Basic visualization capabilities
+
+---
+
+*Built with ❤️ for the geotechnical engineering community*
