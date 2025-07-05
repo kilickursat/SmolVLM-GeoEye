@@ -1169,8 +1169,12 @@ class GeotechnicalMultiAgentOrchestrator:
 
             
             @tool
-            def calculate_tunnel_support(diameter: float, depth: float, rock_quality: str) -> str:
-                """Calculate tunnel support requirements with safety factors."""
+            def calculate_tunnel_support(diameter: float, soil_type: str) -> str:
+                """
+                Calculate tunnel support requirements.
+                Args:
+                    soil_type: The type of soil (e.g. clay, sand).
+                """
                 # Simplified calculation
                 if rock_quality.lower() == "good":
                     support = "Light support: Rock bolts at 2m spacing"
