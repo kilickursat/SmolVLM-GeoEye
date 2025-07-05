@@ -1820,22 +1820,22 @@ def main():
                 
                 col1, col2 = st.columns([3, 1])
                 with col2:
-                    if st.button("🎨 Generate Visualization", type="primary"):
+                    if st.button("🎨 Generate Visualization", type="primary", key="generate_viz_btn"):
                         with st.spinner("Creating geotechnical visualization..."):
                             # Use enhanced visualization module
                             fig = system["visualization"].create_visualization_from_any_document(doc_data)
-                            st.plotly_chart(fig, use_container_width=True)
+                            st.plotly_chart(fig, use_container_width=True, key=f"manual_viz_{selected_doc}")
                 
                 with col1:
                     doc_type = doc_data.get("document_type", "Unknown")
                     num_params = sum(len(v) for v in doc_data.get("numerical_data", {}).values())
                     st.info(f"📊 Document Type: {doc_type} | Extracted Values: {num_params}")
                 
-                # Auto-generate visualization
+                # Auto-generate visualization if numerical data exists
                 if doc_data.get("numerical_data") and any(doc_data["numerical_data"].values()):
                     with st.spinner("Preparing visualization..."):
                         fig = system["visualization"].create_visualization_from_any_document(doc_data)
-                        st.plotly_chart(fig, use_container_width=True)
+                        st.plotly_chart(fig, use_container_width=True, key=f"auto_viz_{selected_doc}")
                 else:
                     st.warning("⚠️ No numerical data extracted yet. Upload documents with geotechnical data.")
         else:
