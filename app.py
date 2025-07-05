@@ -58,30 +58,31 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for geotechnical theme
+# Custom CSS for light geotechnical theme
 st.markdown("""
 <style>
     .stApp {
-        background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1e 100%);
-        color: #ffffff;
+        background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+        color: #2c3e50;
     }
     .geotechnical-container {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.9);
+        border: 2px solid #e9ecef;
         border-radius: 12px;
         padding: 20px;
         margin: 10px 0;
-        backdrop-filter: blur(10px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
     .engineering-metric {
-        background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
         padding: 15px;
         border-radius: 8px;
         text-align: center;
         font-size: 14px;
         font-weight: bold;
         margin: 10px 0;
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        border: 2px solid #dee2e6;
+        color: white;
     }
     .soil-analysis {
         background: linear-gradient(135deg, #8b6914 0%, #6b5010 100%);
@@ -90,6 +91,7 @@ st.markdown("""
         text-align: center;
         color: white;
         margin: 10px 0;
+        border: 2px solid #dee2e6;
     }
     .tunnel-info {
         background: linear-gradient(135deg, #2c5282 0%, #1a365d 100%);
@@ -98,6 +100,7 @@ st.markdown("""
         text-align: center;
         color: white;
         margin: 10px 0;
+        border: 2px solid #dee2e6;
     }
     .stButton > button {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -107,10 +110,113 @@ st.markdown("""
         padding: 10px 20px;
         font-weight: bold;
         transition: all 0.3s ease;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
     .stButton > button:hover {
         transform: translateY(-2px);
         box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    }
+    .stSidebar {
+        background-color: #f8f9fa;
+        border-right: 2px solid #e9ecef;
+    }
+    .stMarkdown h1 {
+        color: #2c3e50;
+    }
+    .stMarkdown h2 {
+        color: #34495e;
+    }
+    .stMarkdown h3 {
+        color: #34495e;
+    }
+    .stMarkdown p {
+        color: #2c3e50;
+    }
+    .stTextInput > div > div > input {
+        background-color: white;
+        color: #2c3e50;
+        border: 2px solid #e9ecef;
+    }
+    .stSelectbox > div > div > select {
+        background-color: white;
+        color: #2c3e50;
+        border: 2px solid #e9ecef;
+    }
+    .stFileUploader > div {
+        background-color: white;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+    }
+    .stAlert {
+        background-color: white;
+        border: 2px solid #e9ecef;
+        color: #2c3e50;
+    }
+    .stSuccess {
+        background-color: #d4edda;
+        border: 2px solid #c3e6cb;
+        color: #155724;
+    }
+    .stError {
+        background-color: #f8d7da;
+        border: 2px solid #f5c6cb;
+        color: #721c24;
+    }
+    .stWarning {
+        background-color: #fff3cd;
+        border: 2px solid #ffeaa7;
+        color: #856404;
+    }
+    .stInfo {
+        background-color: #d1ecf1;
+        border: 2px solid #bee5eb;
+        color: #0c5460;
+    }
+    .stDataFrame {
+        background-color: white;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+    }
+    .stExpander {
+        background-color: white;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+    }
+    .stTabs [data-baseweb="tab-list"] {
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #e9ecef;
+    }
+    .stTabs [data-baseweb="tab"] {
+        color: #495057;
+    }
+    .stTabs [aria-selected="true"] {
+        color: #667eea;
+        font-weight: bold;
+    }
+    .stChatMessage {
+        background-color: white;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        color: #2c3e50;
+    }
+    .stChatInput > div {
+        background-color: white;
+        border: 2px solid #e9ecef;
+        color: #2c3e50;
+    }
+    /* Plotly chart styling */
+    .js-plotly-plot {
+        background-color: white !important;
+    }
+    /* Metric styling */
+    .stMetric {
+        background-color: white;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        padding: 10px;
+    }
+    .stMetric > div {
+        color: #2c3e50;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -869,7 +975,9 @@ class GeotechnicalVisualizationModule:
         fig.update_layout(
             title_text=f"Geotechnical Data Analysis - {doc_type.upper()} Document",
             height=400 * rows,
-            showlegend=False
+            showlegend=False,
+            plot_bgcolor='white',
+            paper_bgcolor='white'
         )
         
         return fig
@@ -926,6 +1034,7 @@ class GeotechnicalVisualizationModule:
                 df[numeric_cols[:4]],  # Limit to 4 columns for readability
                 title="Geotechnical Data Correlation Matrix"
             )
+            fig.update_layout(plot_bgcolor='white', paper_bgcolor='white')
         elif len(numeric_cols) == 1:
             # Create histogram for single numeric column
             fig = px.histogram(
@@ -933,6 +1042,7 @@ class GeotechnicalVisualizationModule:
                 x=numeric_cols[0],
                 title=f"Distribution of {numeric_cols[0]}"
             )
+            fig.update_layout(plot_bgcolor='white', paper_bgcolor='white')
         else:
             # No numeric data
             fig = self._create_error_visualization("No numeric data found in file")
@@ -957,7 +1067,9 @@ class GeotechnicalVisualizationModule:
             fig.update_layout(
                 title="Geotechnical Parameters from JSON",
                 xaxis_title="Index",
-                yaxis_title="Value"
+                yaxis_title="Value",
+                plot_bgcolor='white',
+                paper_bgcolor='white'
             )
         else:
             fig = self._create_error_visualization("No numeric data found in JSON")
@@ -994,7 +1106,9 @@ class GeotechnicalVisualizationModule:
                 title="Geotechnical Terms Frequency in Analysis",
                 xaxis_title="Terms",
                 yaxis_title="Frequency",
-                xaxis_tickangle=-45
+                xaxis_tickangle=-45,
+                plot_bgcolor='white',
+                paper_bgcolor='white'
             )
         else:
             fig = self._create_error_visualization("No geotechnical terms found")
@@ -1023,7 +1137,9 @@ class GeotechnicalVisualizationModule:
             title="PDF Document Structure Analysis",
             xaxis_title="Page",
             yaxis_title="Text Length (characters)",
-            xaxis_tickangle=-45
+            xaxis_tickangle=-45,
+            plot_bgcolor='white',
+            paper_bgcolor='white'
         )
         
         return fig
@@ -1043,7 +1159,9 @@ class GeotechnicalVisualizationModule:
         fig.update_layout(
             title="Visualization Error",
             xaxis=dict(visible=False),
-            yaxis=dict(visible=False)
+            yaxis=dict(visible=False),
+            plot_bgcolor='white',
+            paper_bgcolor='white'
         )
         
         return fig
@@ -1084,7 +1202,9 @@ class GeotechnicalVisualizationModule:
             xaxis_title=param_column,
             yaxis_title=f"{depth_column} (m)",
             yaxis_autorange="reversed",
-            hovermode='closest'
+            hovermode='closest',
+            plot_bgcolor='white',
+            paper_bgcolor='white'
         )
         
         return fig
@@ -1106,6 +1226,8 @@ class GeotechnicalVisualizationModule:
             annotation_text=f"Mean: {data[param_column].mean():.2f}"
         )
         
+        fig.update_layout(plot_bgcolor='white', paper_bgcolor='white')
+        
         return fig
     
     def _create_correlation_matrix(self, data: pd.DataFrame) -> go.Figure:
@@ -1123,7 +1245,7 @@ class GeotechnicalVisualizationModule:
             title="Geotechnical Parameters Correlation Matrix"
         )
         
-        fig.update_layout(width=800, height=800)
+        fig.update_layout(width=800, height=800, plot_bgcolor='white', paper_bgcolor='white')
         
         return fig
     
@@ -1142,6 +1264,8 @@ class GeotechnicalVisualizationModule:
             line_width=2,
             marker_size=8
         )
+        
+        fig.update_layout(plot_bgcolor='white', paper_bgcolor='white')
         
         return fig
 
@@ -1395,8 +1519,8 @@ def main():
         runpod_status = system["runpod_client"].health_check()
     
     # Header
-    st.markdown('<h1 style="text-align: center; color: #667eea;">🏗️ SmolVLM-GeoEye: Geotechnical Engineering Workflow</h1>', unsafe_allow_html=True)
-    st.markdown('<p style="text-align: center; color: #a0a0a0;">Powered by SmolVLM on RunPod GPU + SmolAgent</p>', unsafe_allow_html=True)
+    st.markdown('<h1 style="text-align: center; color: #2c3e50;">🏗️ SmolVLM-GeoEye: Geotechnical Engineering Workflow</h1>', unsafe_allow_html=True)
+    st.markdown('<p style="text-align: center; color: #6c757d;">Powered by SmolVLM on RunPod GPU + SmolAgent</p>', unsafe_allow_html=True)
     
     # Sidebar for document upload
     with st.sidebar:
