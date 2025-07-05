@@ -40,8 +40,7 @@ from smolagents import (
     InferenceClientModel, 
     TransformersModel, 
     DuckDuckGoSearchTool, 
-    tool,
-    PromptTemplates
+    tool
 )
 
 # Configure logging
@@ -1232,35 +1231,23 @@ class GeotechnicalMultiAgentOrchestrator:
             # Initialize the model
             model = InferenceClientModel(model_id=self.model_id, token=self.hf_token)
             
-            # Create custom prompt templates for geotechnical engineering
-            prompt_templates = PromptTemplates(
-                system_prompt=(
-                    "You are a specialized geotechnical engineering AI assistant. "
-                    "Use your tools carefully to answer queries about soil analysis, tunneling support, or safety procedures. "
-                    "Always provide specific numerical values when available and cite engineering standards when appropriate.\n\n"
-                    "{{tool_descriptions}}"
-                ),
-                user_prompt="{{task}}",
-                planning_prompt="Plan your approach to: {{task}}"
-            )
-            
-            # Create specialized agents with updated API
+            # Create specialized agents using the simplified approach with instructions
             self.agents["soil_analyst"] = ToolCallingAgent(
                 tools=[analyze_soil_data],
                 model=model,
-                prompt_templates=prompt_templates
+                instructions="You are a geotechnical engineer specializing in soil mechanics and foundation engineering. Use your tools carefully and provide specific numerical values when available."
             )
             
             self.agents["tunnel_engineer"] = CodeAgent(
                 tools=[calculate_tunnel_support],
                 model=model,
-                prompt_templates=prompt_templates
+                instructions="You are a tunnel engineering specialist with expertise in rock mechanics and support systems. Provide detailed technical recommendations."
             )
             
             self.agents["safety_officer"] = ToolCallingAgent(
                 tools=[generate_safety_checklist],
                 model=model,
-                prompt_templates=prompt_templates
+                instructions="You are a construction safety specialist focused on geotechnical projects. Always prioritize worker safety and regulatory compliance."
             )
             
             logger.info("Geotechnical agents initialized successfully")
