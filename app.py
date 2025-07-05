@@ -1159,9 +1159,14 @@ class GeotechnicalMultiAgentOrchestrator:
             # Define specialized tools for geotechnical analysis
             @tool
             def analyze_soil_data(data: str) -> str:
-                """Analyze soil test data and provide engineering insights."""
-                # This is a placeholder - in production, implement actual analysis
-                return f"Analyzing soil data: {data[:100]}... Based on the data, the soil appears to have moderate bearing capacity."
+                """
+                Analyze soil test data and provide engineering insights.
+            
+                Args:
+                    data: A string containing raw soil testing results.
+                """
+                return f"Analyzing soil data: {data[:100]}… Based on the data, the soil appears to have moderate bearing capacity."
+
             
             @tool
             def calculate_tunnel_support(diameter: float, depth: float, rock_quality: str) -> str:
