@@ -11,7 +11,7 @@ Version: 3.1.0
 """
 
 import logging
-from typing import Dict, List, Any, Optional, Union
+from typing import Dict, List, Any, Optional, Union, Tuple
 from dataclasses import dataclass
 import json
 import re
