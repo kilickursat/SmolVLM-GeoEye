@@ -1,206 +1,189 @@
 version: '3.8'
 
 services:
-  # Main Streamlit application with RunPod integration
-  geotechnical-workflow:
-    build: 
+  # Main SmolVLM-GeoEye Application
+  app:
+    build:
       context: .
       dockerfile: Dockerfile
+    container_name: smolvlm-geoeye-app
+    environment:
+      - ENVIRONMENT=production
+      - RUNPOD_API_KEY=${RUNPOD_API_KEY}
+      - RUNPOD_ENDPOINT_ID=${RUNPOD_ENDPOINT_ID}
+      - HF_TOKEN=${HF_TOKEN}
+      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@db:5432/geotechnical
+      - REDIS_URL=redis://redis:6379
+      - SECRET_KEY=${SECRET_KEY}
+      - COST_ALERT_THRESHOLD=${COST_ALERT_THRESHOLD:-100.0}
     ports:
       - "8501:8501"
-    environment:
-      # RunPod Configuration
-      - RUNPOD_API_KEY=${RUNPOD_API_KEY:-}
-      - RUNPOD_ENDPOINT_ID=${RUNPOD_ENDPOINT_ID:-}
-      
-      # HuggingFace Configuration
-      - HF_TOKEN=${HF_TOKEN:-}
-      
-      # Streamlit Configuration
-      - STREAMLIT_SERVER_PORT=8501
-      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
-      - STREAMLIT_SERVER_HEADLESS=true
-      
-      # Application Configuration
-      - ENVIRONMENT=${ENVIRONMENT:-development}
-      - DEBUG=${DEBUG:-true}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - MAX_UPLOAD_SIZE_MB=${MAX_UPLOAD_SIZE_MB:-200}
-      - PROCESSING_TIMEOUT=${PROCESSING_TIMEOUT:-300}
+    depends_on:
+      - db
+      - redis
     volumes:
-      # Mount source code for development
-      - .:/app
-      # Mount uploads directory
-      - ./uploads:/app/uploads
-      # Mount cache directory
-      - streamlit_cache:/app/.streamlit
+      - ./data:/app/data
+      - ./logs:/app/logs
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8501/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 40s
     networks:
-      - geotechnical-network
+      - smolvlm-network
 
-  # Optional: RunPod worker for local testing (when not using serverless)
-  # Uncomment this service if you want to run SmolVLM locally for development
-  # runpod-worker-local:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile.runpod
-  #   ports:
-  #     - "8000:8000"
-  #   environment:
-  #     - TRANSFORMERS_CACHE=/app/cache
-  #     - HF_HOME=/app/cache
-  #     - HF_TOKEN=${HF_TOKEN:-}
-  #     - TORCH_HOME=/app/cache
-  #     - PYTHONUNBUFFERED=1
-  #   volumes:
-  #     - model_cache:/app/cache
-  #   deploy:
-  #     resources:
-  #       reservations:
-  #         devices:
-  #           - driver: nvidia
-  #             count: 1
-  #             capabilities: [gpu]
-  #   restart: unless-stopped
-  #   networks:
-  #     - geotechnical-network
-
-  # Redis for caching (optional)
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    restart: unless-stopped
-    command: redis-server --appendonly yes
-    networks:
-      - geotechnical-network
-
-  # PostgreSQL for data persistence (optional)
-  postgres:
+  # PostgreSQL Database
+  db:
     image: postgres:15-alpine
+    container_name: smolvlm-geoeye-db
     environment:
-      - POSTGRES_DB=${POSTGRES_DB:-geotechnical}
-      - POSTGRES_USER=${POSTGRES_USER:-admin}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
-    ports:
-      - "5432:5432"
+      - POSTGRES_DB=geotechnical
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
-      - geotechnical-network
+      - smolvlm-network
 
-  # Nginx reverse proxy for production
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: smolvlm-geoeye-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - smolvlm-network
+
+  # Nginx Reverse Proxy
   nginx:
     image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
+    container_name: smolvlm-geoeye-nginx
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
+    ports:
+      - "80:80"
+      - "443:443"
     depends_on:
-      - geotechnical-workflow
+      - app
     restart: unless-stopped
     networks:
-      - geotechnical-network
-    profiles:
-      - production
+      - smolvlm-network
 
-  # Monitoring with Prometheus (optional)
+  # Prometheus Monitoring
   prometheus:
     image: prom/prometheus:latest
-    ports:
-      - "9090:9090"
+    container_name: smolvlm-geoeye-prometheus
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - "9090:9090"
     restart: unless-stopped
     networks:
-      - geotechnical-network
-    profiles:
-      - monitoring
+      - smolvlm-network
 
-  # Grafana for visualization (optional)
+  # Grafana Dashboard
   grafana:
     image: grafana/grafana:latest
-    ports:
-      - "3000:3000"
+    container_name: smolvlm-geoeye-grafana
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana-dashboards:/etc/grafana/provisioning/dashboards:ro
-      - ./monitoring/grafana-datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    ports:
+      - "3000:3000"
     depends_on:
       - prometheus
     restart: unless-stopped
     networks:
-      - geotechnical-network
-    profiles:
-      - monitoring
+      - smolvlm-network
+
+  # Backup Service
+  backup:
+    build:
+      context: .
+      dockerfile: Dockerfile.backup
+    container_name: smolvlm-geoeye-backup
+    environment:
+      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@db:5432/geotechnical
+      - BACKUP_SCHEDULE=${BACKUP_SCHEDULE:-0 2 * * *}
+      - S3_BUCKET=${S3_BUCKET}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    volumes:
+      - ./backups:/backups
+      - postgres_data:/var/lib/postgresql/data:ro
+    depends_on:
+      - db
+    restart: unless-stopped
+    networks:
+      - smolvlm-network
+
+  # API Service
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smolvlm-geoeye-api
+    command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+    environment:
+      - ENVIRONMENT=production
+      - RUNPOD_API_KEY=${RUNPOD_API_KEY}
+      - RUNPOD_ENDPOINT_ID=${RUNPOD_ENDPOINT_ID}
+      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@db:5432/geotechnical
+      - REDIS_URL=redis://redis:6379
+      - SECRET_KEY=${SECRET_KEY}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - smolvlm-network
 
 volumes:
-  # Persistent volumes
-  streamlit_cache:
-    driver: local
-  model_cache:
-    driver: local
-  redis_data:
-    driver: local
   postgres_data:
-    driver: local
+  redis_data:
   prometheus_data:
-    driver: local
   grafana_data:
-    driver: local
+  nginx_logs:
 
 networks:
-  geotechnical-network:
+  smolvlm-network:
     driver: bridge
-    name: geotechnical-network
-
-# Override configurations for different environments
----
-# Development configuration
-version: '3.8'
-x-development: &development
-  extends:
-    service: geotechnical-workflow
-  environment:
-    - DEBUG=true
-    - LOG_LEVEL=DEBUG
-  volumes:
-    - .:/app:delegated  # Faster file sync on macOS
-  command: streamlit run app.py --server.address=0.0.0.0 --server.port=8501 --server.runOnSave=true
-
-# Production configuration  
-x-production: &production
-  extends:
-    service: geotechnical-workflow
-  environment:
-    - DEBUG=false
-    - LOG_LEVEL=INFO
-    - STREAMLIT_SERVER_HEADLESS=true
-  restart: always
-  deploy:
-    replicas: 2
-    resources:
-      limits:
-        memory: 2G
-      reservations:
-        memory: 1G
