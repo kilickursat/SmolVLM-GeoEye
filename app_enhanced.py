@@ -31,7 +31,7 @@ import numpy as np
 from dotenv import load_dotenv
 
 # Import all custom modules
-from modules.config import get_config, ProductionConfig
+from modules.config import get_config, Config, ProductionConfig
 from modules.smolvlm_client import EnhancedRunPodClient
 from modules.data_extraction import EnhancedGeotechnicalDataExtractor
 from modules.visualization import GeotechnicalVisualizationEngine
@@ -177,8 +177,11 @@ class SmolVLMGeoEyeApp:
     
     def __init__(self):
         """Initialize the application with all components"""
-        # Load configuration
-        self.config = get_config(ProductionConfig if os.getenv("ENVIRONMENT") == "production" else None)
+        # Load configuration - use ProductionConfig for production, otherwise default Config
+        if os.getenv("ENVIRONMENT") == "production":
+            self.config = get_config(ProductionConfig)
+        else:
+            self.config = get_config(Config)
         
         # Initialize components
         self.init_components()
