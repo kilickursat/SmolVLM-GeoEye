@@ -73,6 +73,10 @@ class Config:
     scale_up_threshold: float = 0.8
     scale_down_threshold: float = 0.2
     
+    # Health Check Settings
+    health_check_interval: int = 30
+    health_check_timeout: int = 10
+    
     # Feature Flags
     enable_smol_agents: bool = True
     enable_visualization: bool = True
@@ -150,9 +154,9 @@ class ProductionConfig(Config):
     backup_interval_hours: int = 24
     backup_retention_days: int = 30
     
-    # Health Check Settings
-    health_check_interval: int = 30
-    health_check_timeout: int = 10
+    # Health Check Settings (inherited from base class)
+    # health_check_interval: int = 30
+    # health_check_timeout: int = 10
     
     def __post_init__(self):
         """Additional production validation"""
