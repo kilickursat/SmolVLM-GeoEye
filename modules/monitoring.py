@@ -14,6 +14,8 @@ import logging
 import time
 import psutil
 import threading
+import sys
+import platform
 from typing import Dict, Any, Optional, List, Callable
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
@@ -77,8 +79,9 @@ class MetricsCollector:
         # Initialize system info
         SYSTEM_INFO.info({
             'app_version': config.app_version,
-            'python_version': psutil.PYTHON_VERSION,
-            'platform': psutil.SYSTEM,
+            'python_version': platform.python_version(),
+            'platform': platform.system(),
+            'platform_version': platform.version(),
         })
         
         if config.enable_metrics:
