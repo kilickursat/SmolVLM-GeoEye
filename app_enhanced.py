@@ -163,15 +163,26 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Initialize session state
-if "initialized" not in st.session_state:
-    st.session_state.initialized = False
-    st.session_state.messages = []
-    st.session_state.processed_documents = {}
-    st.session_state.async_jobs = {}
-    st.session_state.total_cost = 0.0
-    st.session_state.smolvlm_queries = 0
-    st.session_state.system_health = {"status": "unknown"}
+# Initialize session state BEFORE class instantiation
+def init_session_state():
+    """Initialize all session state variables"""
+    if "initialized" not in st.session_state:
+        st.session_state.initialized = False
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+    if "processed_documents" not in st.session_state:
+        st.session_state.processed_documents = {}
+    if "async_jobs" not in st.session_state:
+        st.session_state.async_jobs = {}
+    if "total_cost" not in st.session_state:
+        st.session_state.total_cost = 0.0
+    if "smolvlm_queries" not in st.session_state:
+        st.session_state.smolvlm_queries = 0
+    if "system_health" not in st.session_state:
+        st.session_state.system_health = {"status": "unknown"}
+
+# Call initialization immediately
+init_session_state()
 
 class SmolVLMGeoEyeApp:
     """Main application class"""
@@ -748,7 +759,7 @@ class SmolVLMGeoEyeApp:
         
         with col3:
             st.metric("Avg Response Time", f"{usage_stats['avg_response_time']*1000:.0f}ms")
-            st.metric("Hourly Cost", f"${usage_stats['hourly_cost']:.4f}")
+            st.metric("Hourly Cost", f"${usage_stats.get('hourly_cost', 0):.4f}")
         
         # Recommendations
         if health.get("recommendations"):
