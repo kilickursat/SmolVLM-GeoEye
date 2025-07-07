@@ -20,6 +20,7 @@ import hashlib
 import asyncio
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple
+from dataclasses import asdict
 import logging
 from pathlib import Path
 
