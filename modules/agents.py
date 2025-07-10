@@ -55,6 +55,44 @@ class BaseGeotechnicalAgent(ABC):
                 score += 0.3
         
         return min(score, 1.0)
+    
+    def search_document_content(self, query: str, documents: Dict[str, Any]) -> str:
+        """Search through document content for relevant information"""
+        query_lower = query.lower()
+        relevant_sections = []
+        
+        for doc_name, doc_data in documents.items():
+            if doc_data.get('document_type') == 'image' and 'content' in doc_data:
+                ai_response = doc_data['content'].get('response', '')
+                
+                # Split response into paragraphs for better matching
+                paragraphs = ai_response.split('\n\n')
+                
+                for paragraph in paragraphs:
+                    paragraph_lower = paragraph.lower()
+                    # Check if any word from query appears in paragraph
+                    query_words = query_lower.split()
+                    if any(word in paragraph_lower for word in query_words if len(word) > 3):
+                        relevant_sections.append({
+                            'source': doc_name,
+                            'content': paragraph
+                        })
+            
+            elif doc_data.get('document_type') == 'pdf' and 'content' in doc_data:
+                pdf_text = doc_data['content'].get('text', '')
+                # Search in PDF text
+                paragraphs = pdf_text.split('\n\n')
+                
+                for paragraph in paragraphs[:20]:  # Limit to first 20 paragraphs
+                    paragraph_lower = paragraph.lower()
+                    query_words = query_lower.split()
+                    if any(word in paragraph_lower for word in query_words if len(word) > 3):
+                        relevant_sections.append({
+                            'source': doc_name,
+                            'content': paragraph[:500]  # Limit length
+                        })
+        
+        return relevant_sections
 
 class SoilAnalysisAgent(BaseGeotechnicalAgent):
     """Agent specialized in soil mechanics and analysis"""
@@ -76,42 +114,56 @@ class SoilAnalysisAgent(BaseGeotechnicalAgent):
         warnings = []
         data_used = {}
         
-        # Extract relevant data from context
+        # First, search through document content for relevant information
+        if context.get('processed_documents'):
+            relevant_sections = self.search_document_content(query, context['processed_documents'])
+            if relevant_sections:
+                response_text = "Based on the uploaded documents:\n\n"
+                for section in relevant_sections[:3]:  # Limit to top 3 relevant sections
+                    response_text += f"**From {section['source']}:**\n{section['content']}\n\n"
+        
+        # Extract numerical data
         numerical_data = self._extract_numerical_data(context)
         
-        # Analyze based on query type
+        # Add specific analysis based on query type
         if "spt" in query.lower() or "n-value" in query.lower():
-            response_text, recs, warns = self._analyze_spt_data(numerical_data)
+            analysis, recs, warns = self._analyze_spt_data(numerical_data)
+            if analysis and "No SPT data" not in analysis:
+                response_text += "\n" + analysis
             recommendations.extend(recs)
             warnings.extend(warns)
             
         elif "bearing capacity" in query.lower():
-            response_text, recs, warns = self._analyze_bearing_capacity(numerical_data)
+            analysis, recs, warns = self._analyze_bearing_capacity(numerical_data)
+            if analysis and "No bearing capacity data" not in analysis:
+                response_text += "\n" + analysis
             recommendations.extend(recs)
             warnings.extend(warns)
             
         elif "classification" in query.lower():
-            response_text = self._analyze_soil_classification(numerical_data)
+            analysis = self._analyze_soil_classification(numerical_data)
+            if analysis:
+                response_text += "\n" + analysis
             
         elif "settlement" in query.lower():
-            response_text, recs = self._analyze_settlement(numerical_data)
+            analysis, recs = self._analyze_settlement(numerical_data)
+            if analysis:
+                response_text += "\n" + analysis
             recommendations.extend(recs)
-            
-        else:
-            # General soil analysis
-            response_text = self._general_soil_analysis(numerical_data)
         
-        # Add document-specific insights
-        if context.get('processed_documents'):
-            doc_insights = self._analyze_documents(context['processed_documents'])
-            if doc_insights:
-                response_text += "\n\n" + doc_insights
+        # If no specific analysis was triggered, provide comprehensive document insights
+        if not response_text and context.get('processed_documents'):
+            response_text = self._comprehensive_document_analysis(query, context['processed_documents'])
+        
+        # If still no response, provide general analysis
+        if not response_text:
+            response_text = self._general_soil_analysis(numerical_data)
         
         return AgentResponse(
             agent_type=self.name,
             query=query,
-            response=response_text or "No specific soil data found to analyze.",
-            confidence=0.85 if numerical_data else 0.5,
+            response=response_text or "No specific soil data found to analyze. Please upload geotechnical documents for detailed analysis.",
+            confidence=0.85 if response_text else 0.5,
             recommendations=recommendations,
             warnings=warnings,
             data_used=numerical_data,
@@ -318,7 +370,7 @@ class SoilAnalysisAgent(BaseGeotechnicalAgent):
         response = "**General Soil Analysis:**\n\n"
         
         if not data:
-            return "No soil data available for analysis."
+            return "No soil data available for analysis. Please upload geotechnical documents containing soil investigation results, SPT data, laboratory test results, or engineering reports."
         
         # Summarize available data
         response += "Available soil parameters:\n"
@@ -335,20 +387,22 @@ class SoilAnalysisAgent(BaseGeotechnicalAgent):
         
         return response
     
-    def _analyze_documents(self, documents: Dict[str, Any]) -> str:
-        """Extract insights from document analysis"""
-        insights = []
+    def _comprehensive_document_analysis(self, query: str, documents: Dict[str, Any]) -> str:
+        """Provide comprehensive analysis from all document content"""
+        response = "**Document Analysis Results:**\n\n"
         
         for doc_name, doc_data in documents.items():
             if doc_data.get('document_type') == 'image' and 'content' in doc_data:
-                # Extract insights from AI analysis
                 ai_response = doc_data['content'].get('response', '')
-                if 'soil' in ai_response.lower() or 'spt' in ai_response.lower():
-                    insights.append(f"From {doc_name}: {ai_response[:200]}...")
+                if ai_response:
+                    response += f"**From {doc_name}:**\n"
+                    # Include full AI response, not just a snippet
+                    response += ai_response + "\n\n"
         
-        if insights:
-            return "**Document Insights:**\n" + "\n".join(insights)
-        return ""
+        if response == "**Document Analysis Results:**\n\n":
+            response = "No detailed analysis available from documents. Please ensure documents contain geotechnical information."
+        
+        return response
 
 class TunnelSupportAgent(BaseGeotechnicalAgent):
     """Agent specialized in tunnel engineering and support systems"""
@@ -369,31 +423,50 @@ class TunnelSupportAgent(BaseGeotechnicalAgent):
         warnings = []
         data_used = {}
         
+        # First, search through document content for relevant information
+        if context.get('processed_documents'):
+            relevant_sections = self.search_document_content(query, context['processed_documents'])
+            if relevant_sections:
+                response_text = "Based on the uploaded documents:\n\n"
+                for section in relevant_sections[:3]:
+                    response_text += f"**From {section['source']}:**\n{section['content']}\n\n"
+        
         # Extract relevant data
         numerical_data = self._extract_numerical_data(context)
         
         # Analyze based on query type
         if "support" in query.lower() or "lining" in query.lower():
-            response_text, recs = self._analyze_tunnel_support(numerical_data)
+            analysis, recs = self._analyze_tunnel_support(numerical_data)
+            if analysis:
+                response_text += "\n" + analysis
             recommendations.extend(recs)
             
         elif "rqd" in query.lower() or "rock quality" in query.lower():
-            response_text, recs, warns = self._analyze_rock_quality(numerical_data)
+            analysis, recs, warns = self._analyze_rock_quality(numerical_data)
+            if analysis:
+                response_text += "\n" + analysis
             recommendations.extend(recs)
             warnings.extend(warns)
             
         elif "excavation" in query.lower():
-            response_text, recs = self._analyze_excavation_method(numerical_data)
+            analysis, recs = self._analyze_excavation_method(numerical_data)
+            if analysis:
+                response_text += "\n" + analysis
             recommendations.extend(recs)
-            
-        else:
+        
+        # If no specific analysis was triggered, provide comprehensive document insights
+        if not response_text and context.get('processed_documents'):
+            response_text = self._comprehensive_document_analysis(query, context['processed_documents'])
+        
+        # If still no response, provide general analysis
+        if not response_text:
             response_text = self._general_tunnel_analysis(numerical_data)
         
         return AgentResponse(
             agent_type=self.name,
             query=query,
             response=response_text or "No specific tunnel engineering data found.",
-            confidence=0.85 if numerical_data else 0.5,
+            confidence=0.85 if response_text else 0.5,
             recommendations=recommendations,
             warnings=warnings,
             data_used=numerical_data,
@@ -408,10 +481,10 @@ class TunnelSupportAgent(BaseGeotechnicalAgent):
         for doc_name, doc_data in context.get('processed_documents', {}).items():
             if 'numerical_data' in doc_data:
                 for param_type, values in doc_data['numerical_data'].items():
-                    if param_type in ['rqd', 'ucs', 'cohesion', 'friction_angle']:
-                        if param_type not in data:
-                            data[param_type] = []
-                        data[param_type].extend(values)
+                    # Include all rock mechanics parameters
+                    if param_type not in data:
+                        data[param_type] = []
+                    data[param_type].extend(values)
         
         return data
     
@@ -561,6 +634,22 @@ class TunnelSupportAgent(BaseGeotechnicalAgent):
             response += "- Perform detailed geological mapping\n"
             response += "- Monitor convergence during excavation\n"
             response += "- Design support based on observational method\n"
+        
+        return response
+    
+    def _comprehensive_document_analysis(self, query: str, documents: Dict[str, Any]) -> str:
+        """Provide comprehensive analysis from all document content"""
+        response = "**Document Analysis Results:**\n\n"
+        
+        for doc_name, doc_data in documents.items():
+            if doc_data.get('document_type') == 'image' and 'content' in doc_data:
+                ai_response = doc_data['content'].get('response', '')
+                if 'rock' in ai_response.lower() or 'tunnel' in ai_response.lower() or 'rqd' in ai_response.lower():
+                    response += f"**From {doc_name}:**\n"
+                    response += ai_response + "\n\n"
+        
+        if response == "**Document Analysis Results:**\n\n":
+            response = "No tunnel engineering data found in documents. Please upload documents containing rock mechanics data, RQD values, or tunnel design information."
         
         return response
 
@@ -822,7 +911,18 @@ class GeotechnicalAgentOrchestrator:
         
     def route_query(self, query: str, context: Dict[str, Any]) -> AgentResponse:
         """Route query to most appropriate agent"""
-        # Calculate confidence scores for each agent
+        # First, check if query is asking for general information from documents
+        query_lower = query.lower()
+        
+        # If it's a general query, use the soil agent as default for document analysis
+        if any(word in query_lower for word in ['what', 'tell me', 'explain', 'describe', 'show me', 'information']):
+            # Use soil agent for general queries
+            selected_agent = self.agents['soil']
+            response = selected_agent.analyze(query, context)
+            response.confidence = 0.9
+            return response
+        
+        # Otherwise, calculate confidence scores for each agent
         scores = {}
         for agent_type, agent in self.agents.items():
             scores[agent_type] = agent.can_handle(query)
