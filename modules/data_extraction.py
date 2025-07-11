@@ -7,7 +7,7 @@ Advanced numerical data extraction from geotechnical documents.
 Handles extraction of SPT values, bearing capacity, soil properties, etc.
 
 Author: SmolVLM-GeoEye Team
-Version: 3.1.0
+Version: 3.2.0
 """
 
 import re
@@ -37,76 +37,109 @@ class EnhancedGeotechnicalDataExtractor:
         # Enhanced patterns for various geotechnical parameters
         self.extraction_patterns = {
             'spt_values': [
-                r'SPT[^\d]*N[\s-]*value[s]?[\s:=]*(\d+(?:\.\d+)?)',
-                r'N[\s-]*value[s]?[\s:=]*(\d+(?:\.\d+)?)\s*(?:at|@)\s*(\d+(?:\.\d+)?)\s*(m|ft|meter|feet)',
-                r'SPT[\s:=]*(\d+(?:\.\d+)?)\s*(?:at|@)\s*(\d+(?:\.\d+)?)\s*(m|ft)',
-                r'N\s*=\s*(\d+(?:\.\d+)?)\s*(?:at|@)\s*(\d+(?:\.\d+)?)\s*(m|ft)',
-                r'Standard\s+Penetration\s+Test[^\d]*(\d+(?:\.\d+)?)',
-                r'blow\s*count[s]?[\s:=]*(\d+(?:\.\d+)?)',
+                r'SPT[^\\d]*N[\s-]*value[s]?[\s:=]*(\\d+(?:\\.\\d+)?)',
+                r'N[\s-]*value[s]?[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(?:at|@)\\s*(\\d+(?:\\.\\d+)?)\\s*(m|ft|meter|feet)',
+                r'SPT[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(?:at|@)\\s*(\\d+(?:\\.\\d+)?)\\s*(m|ft)',
+                r'N\\s*=\\s*(\\d+(?:\\.\\d+)?)\\s*(?:at|@)\\s*(\\d+(?:\\.\\d+)?)\\s*(m|ft)',
+                r'Standard\\s+Penetration\\s+Test[^\\d]*(\\d+(?:\\.\\d+)?)',
+                r'blow\\s*count[s]?[\s:=]*(\\d+(?:\\.\\d+)?)',
             ],
             'bearing_capacity': [
-                r'bearing\s+capacity[\s:=]*(\d+(?:\.\d+)?)\s*(kPa|MPa|psf|ksf|kN/m²|MN/m²)',
-                r'allowable\s+bearing[\s:=]*(\d+(?:\.\d+)?)\s*(kPa|MPa|psf|ksf)',
-                r'ultimate\s+bearing[\s:=]*(\d+(?:\.\d+)?)\s*(kPa|MPa|psf|ksf)',
-                r'q[_]?allow[\s:=]*(\d+(?:\.\d+)?)\s*(kPa|MPa|psf|ksf)',
-                r'q[_]?ult[\s:=]*(\d+(?:\.\d+)?)\s*(kPa|MPa|psf|ksf)',
-                r'safe\s+bearing[\s:=]*(\d+(?:\.\d+)?)\s*(kPa|MPa|psf|ksf)',
+                r'bearing\\s+capacity[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(kPa|MPa|psf|ksf|kN/m²|MN/m²)',
+                r'allowable\\s+bearing[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(kPa|MPa|psf|ksf)',
+                r'ultimate\\s+bearing[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(kPa|MPa|psf|ksf)',
+                r'q[_]?allow[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(kPa|MPa|psf|ksf)',
+                r'q[_]?ult[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(kPa|MPa|psf|ksf)',
+                r'safe\\s+bearing[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(kPa|MPa|psf|ksf)',
             ],
             'density': [
-                r'density[\s:=]*(\d+(?:\.\d+)?)\s*(g/cm³|kg/m³|pcf|g/cc)',
-                r'unit\s+weight[\s:=]*(\d+(?:\.\d+)?)\s*(kN/m³|pcf|lb/ft³)',
-                r'dry\s+density[\s:=]*(\d+(?:\.\d+)?)\s*(g/cm³|kg/m³|pcf)',
-                r'bulk\s+density[\s:=]*(\d+(?:\.\d+)?)\s*(g/cm³|kg/m³|pcf)',
-                r'γ[\s:=]*(\d+(?:\.\d+)?)\s*(kN/m³|pcf)',
-                r'rho[\s:=]*(\d+(?:\.\d+)?)\s*(g/cm³|kg/m³)',
+                r'density[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(g/cm³|kg/m³|pcf|g/cc)',
+                r'unit\\s+weight[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(kN/m³|pcf|lb/ft³)',
+                r'dry\\s+density[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(g/cm³|kg/m³|pcf)',
+                r'bulk\\s+density[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(g/cm³|kg/m³|pcf)',
+                r'γ[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(kN/m³|pcf)',
+                r'rho[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(g/cm³|kg/m³)',
             ],
             'moisture_content': [
-                r'moisture\s+content[\s:=]*(\d+(?:\.\d+)?)\s*(%|percent)',
-                r'water\s+content[\s:=]*(\d+(?:\.\d+)?)\s*(%|percent)',
-                r'w[\s:=]*(\d+(?:\.\d+)?)\s*%',
-                r'MC[\s:=]*(\d+(?:\.\d+)?)\s*%',
+                r'moisture\\s+content[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(%|percent)',
+                r'water\\s+content[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(%|percent)',
+                r'w[\s:=]*(\\d+(?:\\.\\d+)?)\\s*%',
+                r'MC[\s:=]*(\\d+(?:\\.\\d+)?)\\s*%',
             ],
             'cohesion': [
-                r'cohesion[\s:=]*(\d+(?:\.\d+)?)\s*(kPa|MPa|psf|ksf)',
-                r'c[\s:=]*(\d+(?:\.\d+)?)\s*(kPa|MPa|psf|ksf)',
-                r'undrained\s+shear[\s:=]*(\d+(?:\.\d+)?)\s*(kPa|MPa|psf|ksf)',
-                r'Su[\s:=]*(\d+(?:\.\d+)?)\s*(kPa|MPa|psf|ksf)',
+                r'cohesion[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(kPa|MPa|psf|ksf)',
+                r'c[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(kPa|MPa|psf|ksf)',
+                r'undrained\\s+shear[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(kPa|MPa|psf|ksf)',
+                r'Su[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(kPa|MPa|psf|ksf)',
             ],
             'friction_angle': [
-                r'friction\s+angle[\s:=]*(\d+(?:\.\d+)?)\s*(°|deg|degree)',
-                r'phi[\s:=]*(\d+(?:\.\d+)?)\s*(°|deg|degree)',
-                r'φ[\s:=]*(\d+(?:\.\d+)?)\s*(°|deg|degree)',
-                r'angle\s+of\s+friction[\s:=]*(\d+(?:\.\d+)?)\s*(°|deg|degree)',
+                r'friction\\s+angle[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(°|deg|degree)',
+                r'phi[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(°|deg|degree)',
+                r'φ[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(°|deg|degree)',
+                r'angle\\s+of\\s+friction[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(°|deg|degree)',
             ],
             'settlement': [
-                r'settlement[\s:=]*(\d+(?:\.\d+)?)\s*(mm|cm|m|in|ft)',
-                r'total\s+settlement[\s:=]*(\d+(?:\.\d+)?)\s*(mm|cm|m|in|ft)',
-                r'immediate\s+settlement[\s:=]*(\d+(?:\.\d+)?)\s*(mm|cm|m|in|ft)',
-                r'consolidation\s+settlement[\s:=]*(\d+(?:\.\d+)?)\s*(mm|cm|m|in|ft)',
+                r'settlement[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(mm|cm|m|in|ft)',
+                r'total\\s+settlement[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(mm|cm|m|in|ft)',
+                r'immediate\\s+settlement[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(mm|cm|m|in|ft)',
+                r'consolidation\\s+settlement[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(mm|cm|m|in|ft)',
             ],
             'rqd': [
-                r'RQD[\s:=]*(\d+(?:\.\d+)?)\s*%',
-                r'Rock\s+Quality\s+Designation[\s:=]*(\d+(?:\.\d+)?)\s*%',
+                r'RQD[\s:=]*(\\d+(?:\\.\\d+)?)\\s*%',
+                r'Rock\\s+Quality\\s+Designation[\s:=]*(\\d+(?:\\.\\d+)?)\\s*%',
             ],
             'ucs': [
-                r'UCS[\s:=]*(\d+(?:\.\d+)?)\s*(MPa|kPa|psi)',
-                r'unconfined\s+compressive[\s:=]*(\d+(?:\.\d+)?)\s*(MPa|kPa|psi)',
-                r'compressive\s+strength[\s:=]*(\d+(?:\.\d+)?)\s*(MPa|kPa|psi)',
+                r'UCS[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(MPa|kPa|psi)',
+                r'unconfined\\s+compressive[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(MPa|kPa|psi)',
+                r'compressive\\s+strength[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(MPa|kPa|psi)',
             ],
             'plasticity_index': [
-                r'PI[\s:=]*(\d+(?:\.\d+)?)',
-                r'plasticity\s+index[\s:=]*(\d+(?:\.\d+)?)',
-                r'Ip[\s:=]*(\d+(?:\.\d+)?)',
+                r'PI[\s:=]*(\\d+(?:\\.\\d+)?)',
+                r'plasticity\\s+index[\s:=]*(\\d+(?:\\.\\d+)?)',
+                r'Ip[\s:=]*(\\d+(?:\\.\\d+)?)',
             ],
             'liquid_limit': [
-                r'LL[\s:=]*(\d+(?:\.\d+)?)\s*%',
-                r'liquid\s+limit[\s:=]*(\d+(?:\.\d+)?)\s*%',
-                r'wL[\s:=]*(\d+(?:\.\d+)?)\s*%',
+                r'LL[\s:=]*(\\d+(?:\\.\\d+)?)\\s*%',
+                r'liquid\\s+limit[\s:=]*(\\d+(?:\\.\\d+)?)\\s*%',
+                r'wL[\s:=]*(\\d+(?:\\.\\d+)?)\\s*%',
             ],
             'plastic_limit': [
-                r'PL[\s:=]*(\d+(?:\.\d+)?)\s*%',
-                r'plastic\s+limit[\s:=]*(\d+(?:\.\d+)?)\s*%',
-                r'wP[\s:=]*(\d+(?:\.\d+)?)\s*%',
+                r'PL[\s:=]*(\\d+(?:\\.\\d+)?)\\s*%',
+                r'plastic\\s+limit[\s:=]*(\\d+(?:\\.\\d+)?)\\s*%',
+                r'wP[\s:=]*(\\d+(?:\\.\\d+)?)\\s*%',
+            ],
+            # Additional parameters for comprehensive extraction
+            'permeability': [
+                r'permeability[\s:=]*(\\d+(?:\\.\\d+)?(?:e[+-]?\\d+)?)\\s*(m/s|cm/s|ft/day)',
+                r'k[\s:=]*(\\d+(?:\\.\\d+)?(?:e[+-]?\\d+)?)\\s*(m/s|cm/s)',
+                r'hydraulic\\s+conductivity[\s:=]*(\\d+(?:\\.\\d+)?(?:e[+-]?\\d+)?)\\s*(m/s|cm/s)',
+            ],
+            'void_ratio': [
+                r'void\\s+ratio[\s:=]*(\\d+(?:\\.\\d+)?)',
+                r'e[\s:=]*(\\d+(?:\\.\\d+)?)',
+            ],
+            'porosity': [
+                r'porosity[\s:=]*(\\d+(?:\\.\\d+)?)\\s*%?',
+                r'n[\s:=]*(\\d+(?:\\.\\d+)?)\\s*%?',
+            ],
+            'modulus': [
+                r'modulus[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(MPa|GPa|kPa|psi)',
+                r'E[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(MPa|GPa|kPa)',
+                r'elastic\\s+modulus[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(MPa|GPa|kPa)',
+                r'Young\'s\\s+modulus[\s:=]*(\\d+(?:\\.\\d+)?)\\s*(MPa|GPa|kPa)',
+            ],
+            'poisson_ratio': [
+                r'poisson[\s\']*ratio[\s:=]*(\\d+(?:\\.\\d+)?)',
+                r'ν[\s:=]*(\\d+(?:\\.\\d+)?)',
+                r'nu[\s:=]*(\\d+(?:\\.\\d+)?)',
+            ],
+            'gsi': [
+                r'GSI[\s:=]*(\\d+(?:\\.\\d+)?)',
+                r'Geological\\s+Strength\\s+Index[\s:=]*(\\d+(?:\\.\\d+)?)',
+            ],
+            'mi': [
+                r'mi[\s:=]*(\\d+(?:\\.\\d+)?)',
+                r'intact\\s+rock\\s+parameter[\s:=]*(\\d+(?:\\.\\d+)?)',
             ],
         }
         
@@ -118,6 +151,42 @@ class EnhancedGeotechnicalDataExtractor:
         extracted_data = {}
         text_lower = text.lower()
         
+        # Extract general numerical values that might not match specific patterns
+        general_numerical_pattern = r'(\\w+[\\s\\w]*?)[\s:=]*(\\d+(?:\\.\\d+)?(?:e[+-]?\\d+)?)\\s*([a-zA-Z%°/³²]+)?'
+        general_matches = re.finditer(general_numerical_pattern, text, re.IGNORECASE)
+        
+        general_data = []
+        for match in general_matches:
+            try:
+                param_name = match.group(1).strip()
+                value = float(match.group(2))
+                unit = match.group(3) if match.group(3) else ''
+                
+                # Skip if it's already captured by specific patterns
+                already_captured = False
+                for param_type in self.extraction_patterns:
+                    if param_type in param_name.lower():
+                        already_captured = True
+                        break
+                
+                if not already_captured and value > 0:
+                    context = text[max(0, match.start() - 50):min(len(text), match.end() + 50)]
+                    general_data.append(ExtractedValue(
+                        value=value,
+                        unit=unit,
+                        context=context,
+                        confidence=0.7,
+                        parameter_type='general_parameter',
+                        depth=None,
+                        depth_unit=None
+                    ))
+            except:
+                continue
+        
+        if general_data:
+            extracted_data['general_parameters'] = general_data
+        
+        # Extract using specific patterns
         for param_type, patterns in self.extraction_patterns.items():
             values = []
             
@@ -197,15 +266,20 @@ class EnhancedGeotechnicalDataExtractor:
         """Extract numerical data from structured sources like CSV/Excel"""
         extracted_data = {}
         
-        # Common column patterns for geotechnical data
+        # Enhanced column patterns for geotechnical data
         column_patterns = {
-            'spt_values': ['spt', 'n-value', 'n_value', 'blow count', 'penetration'],
-            'bearing_capacity': ['bearing', 'capacity', 'allowable', 'ultimate'],
-            'density': ['density', 'unit weight', 'gamma'],
-            'moisture_content': ['moisture', 'water content', 'mc', 'w%'],
-            'cohesion': ['cohesion', 'c', 'su', 'undrained'],
-            'friction_angle': ['friction', 'phi', 'angle'],
-            'depth': ['depth', 'elevation', 'level'],
+            'spt_values': ['spt', 'n-value', 'n_value', 'blow count', 'penetration', 'n value'],
+            'bearing_capacity': ['bearing', 'capacity', 'allowable', 'ultimate', 'qa', 'qu'],
+            'density': ['density', 'unit weight', 'gamma', 'γ', 'bulk', 'dry'],
+            'moisture_content': ['moisture', 'water content', 'mc', 'w%', 'water'],
+            'cohesion': ['cohesion', 'c', 'su', 'undrained', 'shear strength'],
+            'friction_angle': ['friction', 'phi', 'angle', 'φ'],
+            'depth': ['depth', 'elevation', 'level', 'z'],
+            'permeability': ['permeability', 'k', 'hydraulic conductivity'],
+            'modulus': ['modulus', 'e', 'elastic', 'young'],
+            'settlement': ['settlement', 'compression', 'consolidation'],
+            'rqd': ['rqd', 'rock quality'],
+            'ucs': ['ucs', 'compressive strength', 'unconfined'],
         }
         
         # Identify relevant columns
@@ -217,7 +291,20 @@ class EnhancedGeotechnicalDataExtractor:
                     values = []
                     for idx, value in data[col].items():
                         try:
-                            if pd.notna(value) and isinstance(value, (int, float)):
+                            if pd.notna(value):
+                                # Handle both numeric and string values
+                                if isinstance(value, str):
+                                    # Try to extract number from string
+                                    num_match = re.search(r'(\\d+(?:\\.\\d+)?)', value)
+                                    if num_match:
+                                        value = float(num_match.group(1))
+                                    else:
+                                        continue
+                                elif isinstance(value, (int, float)):
+                                    value = float(value)
+                                else:
+                                    continue
+                                
                                 # Try to find associated depth
                                 depth = None
                                 depth_unit = 'm'
@@ -230,7 +317,7 @@ class EnhancedGeotechnicalDataExtractor:
                                             break
                                 
                                 extracted_value = ExtractedValue(
-                                    value=float(value),
+                                    value=value,
                                     unit=self._infer_unit_from_column(col),
                                     context=f"Row {idx}: {col}",
                                     confidence=0.9,
@@ -239,7 +326,8 @@ class EnhancedGeotechnicalDataExtractor:
                                     depth_unit=depth_unit if depth else None
                                 )
                                 values.append(extracted_value)
-                        except:
+                        except Exception as e:
+                            logger.debug(f"Error extracting from column {col}, row {idx}: {e}")
                             continue
                     
                     if values:
@@ -278,6 +366,14 @@ class EnhancedGeotechnicalDataExtractor:
             'plasticity_index': '',
             'liquid_limit': '%',
             'plastic_limit': '%',
+            'permeability': 'm/s',
+            'void_ratio': '',
+            'porosity': '%',
+            'modulus': 'MPa',
+            'poisson_ratio': '',
+            'gsi': '',
+            'mi': '',
+            'general_parameter': '',
         }
         return unit_map.get(param_type, '')
     
@@ -295,10 +391,18 @@ class EnhancedGeotechnicalDataExtractor:
             return '°'
         elif 'g/cm' in col_lower:
             return 'g/cm³'
+        elif 'kg/m' in col_lower:
+            return 'kg/m³'
+        elif 'kn/m' in col_lower:
+            return 'kN/m³'
         elif 'mm' in col_lower:
             return 'mm'
         elif 'm' in col_lower and 'meter' in col_lower:
             return 'm'
+        elif 'm/s' in col_lower:
+            return 'm/s'
+        elif 'cm/s' in col_lower:
+            return 'cm/s'
         else:
             return ''
     
