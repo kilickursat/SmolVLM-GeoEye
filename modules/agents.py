@@ -7,7 +7,7 @@ Specialized AI agents for geotechnical engineering tasks.
 Implements SmolAgent-based reasoning for domain-specific analysis.
 
 Author: SmolVLM-GeoEye Team
-Version: 3.1.0
+Version: 3.2.0
 """
 
 import logging
@@ -50,13 +50,68 @@ class BaseGeotechnicalAgent(ABC):
         query_lower = query.lower()
         score = 0.0
         
+        # Check for document summary requests
+        summary_keywords = ['summary', 'summarize', 'overview', 'what does', 'tell me about', 
+                          'explain', 'describe', 'content', 'information', 'analysis']
+        if any(keyword in query_lower for keyword in summary_keywords):
+            score += 0.5
+        
         for area in self.expertise_areas:
             if area.lower() in query_lower:
                 score += 0.3
         
         return min(score, 1.0)
     
-    def search_document_content(self, query: str, documents: Dict[str, Any]) -> str:
+    def get_document_summary(self, documents: Dict[str, Any]) -> str:
+        """Get comprehensive summary of all documents"""
+        if not documents:
+            return "No documents uploaded for analysis."
+        
+        summary = "**Document Summary:**\n\n"
+        
+        for doc_name, doc_data in documents.items():
+            doc_type = doc_data.get('document_type', 'unknown')
+            summary += f"### {doc_name} ({doc_type})\n\n"
+            
+            # For image documents with SmolVLM analysis
+            if doc_type == 'image' and 'content' in doc_data:
+                ai_response = doc_data['content'].get('response', '')
+                if ai_response:
+                    summary += f"{ai_response}\n\n"
+                else:
+                    summary += "No analysis available for this image.\n\n"
+            
+            # For PDF documents
+            elif doc_type == 'pdf' and 'content' in doc_data:
+                pdf_info = doc_data['content']
+                pages = pdf_info.get('pages', 0)
+                text_preview = pdf_info.get('text', '')[:500] + "..."
+                summary += f"**Pages:** {pages}\n"
+                summary += f"**Preview:** {text_preview}\n\n"
+            
+            # For data files (CSV/Excel)
+            elif doc_type == 'data' and 'content' in doc_data:
+                data_info = doc_data['content']
+                shape = data_info.get('shape', (0, 0))
+                columns = data_info.get('columns', [])
+                summary += f"**Data Shape:** {shape[0]} rows × {shape[1]} columns\n"
+                summary += f"**Columns:** {', '.join(columns[:10])}"
+                if len(columns) > 10:
+                    summary += f" ... and {len(columns) - 10} more"
+                summary += "\n\n"
+            
+            # Show extracted numerical data
+            numerical_data = doc_data.get('numerical_data', {})
+            if numerical_data:
+                summary += "**Extracted Parameters:**\n"
+                for param_type, values in numerical_data.items():
+                    if values:
+                        summary += f"- {param_type.replace('_', ' ').title()}: {len(values)} values\n"
+                summary += "\n"
+        
+        return summary
+    
+    def search_document_content(self, query: str, documents: Dict[str, Any]) -> List[Dict[str, str]]:
         """Search through document content for relevant information"""
         query_lower = query.lower()
         relevant_sections = []
@@ -114,44 +169,56 @@ class SoilAnalysisAgent(BaseGeotechnicalAgent):
         warnings = []
         data_used = {}
         
-        # First, search through document content for relevant information
-        if context.get('processed_documents'):
-            relevant_sections = self.search_document_content(query, context['processed_documents'])
-            if relevant_sections:
-                response_text = "Based on the uploaded documents:\n\n"
-                for section in relevant_sections[:3]:  # Limit to top 3 relevant sections
-                    response_text += f"**From {section['source']}:**\n{section['content']}\n\n"
+        # Check if user is asking for document summary
+        query_lower = query.lower()
+        summary_requested = any(keyword in query_lower for keyword in 
+                              ['summary', 'summarize', 'overview', 'what does', 
+                               'tell me about', 'explain the document', 'describe the document'])
+        
+        # Always provide document summary if requested
+        if summary_requested and context.get('processed_documents'):
+            response_text = self.get_document_summary(context['processed_documents'])
+        else:
+            # First, search through document content for relevant information
+            if context.get('processed_documents'):
+                relevant_sections = self.search_document_content(query, context['processed_documents'])
+                if relevant_sections:
+                    response_text = "Based on the uploaded documents:\n\n"
+                    for section in relevant_sections[:3]:  # Limit to top 3 relevant sections
+                        response_text += f"**From {section['source']}:**\n{section['content']}\n\n"
         
         # Extract numerical data
         numerical_data = self._extract_numerical_data(context)
+        data_used = numerical_data
         
-        # Add specific analysis based on query type
-        if "spt" in query.lower() or "n-value" in query.lower():
-            analysis, recs, warns = self._analyze_spt_data(numerical_data)
-            if analysis and "No SPT data" not in analysis:
-                response_text += "\n" + analysis
-            recommendations.extend(recs)
-            warnings.extend(warns)
-            
-        elif "bearing capacity" in query.lower():
-            analysis, recs, warns = self._analyze_bearing_capacity(numerical_data)
-            if analysis and "No bearing capacity data" not in analysis:
-                response_text += "\n" + analysis
-            recommendations.extend(recs)
-            warnings.extend(warns)
-            
-        elif "classification" in query.lower():
-            analysis = self._analyze_soil_classification(numerical_data)
-            if analysis:
-                response_text += "\n" + analysis
-            
-        elif "settlement" in query.lower():
-            analysis, recs = self._analyze_settlement(numerical_data)
-            if analysis:
-                response_text += "\n" + analysis
-            recommendations.extend(recs)
+        # Add specific analysis based on query type (only if not a summary request)
+        if not summary_requested:
+            if "spt" in query_lower or "n-value" in query_lower:
+                analysis, recs, warns = self._analyze_spt_data(numerical_data)
+                if analysis and "No SPT data" not in analysis:
+                    response_text += "\n" + analysis
+                recommendations.extend(recs)
+                warnings.extend(warns)
+                
+            elif "bearing capacity" in query_lower:
+                analysis, recs, warns = self._analyze_bearing_capacity(numerical_data)
+                if analysis and "No bearing capacity data" not in analysis:
+                    response_text += "\n" + analysis
+                recommendations.extend(recs)
+                warnings.extend(warns)
+                
+            elif "classification" in query_lower:
+                analysis = self._analyze_soil_classification(numerical_data)
+                if analysis:
+                    response_text += "\n" + analysis
+                
+            elif "settlement" in query_lower:
+                analysis, recs = self._analyze_settlement(numerical_data)
+                if analysis:
+                    response_text += "\n" + analysis
+                recommendations.extend(recs)
         
-        # If no specific analysis was triggered, provide comprehensive document insights
+        # If no response yet and documents exist, provide comprehensive analysis
         if not response_text and context.get('processed_documents'):
             response_text = self._comprehensive_document_analysis(query, context['processed_documents'])
         
@@ -166,7 +233,7 @@ class SoilAnalysisAgent(BaseGeotechnicalAgent):
             confidence=0.85 if response_text else 0.5,
             recommendations=recommendations,
             warnings=warnings,
-            data_used=numerical_data,
+            data_used=data_used,
             document_based=bool(context.get('processed_documents')),
             timestamp=datetime.now().isoformat()
         )
@@ -423,38 +490,50 @@ class TunnelSupportAgent(BaseGeotechnicalAgent):
         warnings = []
         data_used = {}
         
-        # First, search through document content for relevant information
-        if context.get('processed_documents'):
-            relevant_sections = self.search_document_content(query, context['processed_documents'])
-            if relevant_sections:
-                response_text = "Based on the uploaded documents:\n\n"
-                for section in relevant_sections[:3]:
-                    response_text += f"**From {section['source']}:**\n{section['content']}\n\n"
+        # Check if user is asking for document summary
+        query_lower = query.lower()
+        summary_requested = any(keyword in query_lower for keyword in 
+                              ['summary', 'summarize', 'overview', 'what does', 
+                               'tell me about', 'explain the document', 'describe the document'])
+        
+        # Always provide document summary if requested
+        if summary_requested and context.get('processed_documents'):
+            response_text = self.get_document_summary(context['processed_documents'])
+        else:
+            # First, search through document content for relevant information
+            if context.get('processed_documents'):
+                relevant_sections = self.search_document_content(query, context['processed_documents'])
+                if relevant_sections:
+                    response_text = "Based on the uploaded documents:\n\n"
+                    for section in relevant_sections[:3]:
+                        response_text += f"**From {section['source']}:**\n{section['content']}\n\n"
         
         # Extract relevant data
         numerical_data = self._extract_numerical_data(context)
+        data_used = numerical_data
         
-        # Analyze based on query type
-        if "support" in query.lower() or "lining" in query.lower():
-            analysis, recs = self._analyze_tunnel_support(numerical_data)
-            if analysis:
-                response_text += "\n" + analysis
-            recommendations.extend(recs)
-            
-        elif "rqd" in query.lower() or "rock quality" in query.lower():
-            analysis, recs, warns = self._analyze_rock_quality(numerical_data)
-            if analysis:
-                response_text += "\n" + analysis
-            recommendations.extend(recs)
-            warnings.extend(warns)
-            
-        elif "excavation" in query.lower():
-            analysis, recs = self._analyze_excavation_method(numerical_data)
-            if analysis:
-                response_text += "\n" + analysis
-            recommendations.extend(recs)
+        # Analyze based on query type (only if not a summary request)
+        if not summary_requested:
+            if "support" in query_lower or "lining" in query_lower:
+                analysis, recs = self._analyze_tunnel_support(numerical_data)
+                if analysis:
+                    response_text += "\n" + analysis
+                recommendations.extend(recs)
+                
+            elif "rqd" in query_lower or "rock quality" in query_lower:
+                analysis, recs, warns = self._analyze_rock_quality(numerical_data)
+                if analysis:
+                    response_text += "\n" + analysis
+                recommendations.extend(recs)
+                warnings.extend(warns)
+                
+            elif "excavation" in query_lower:
+                analysis, recs = self._analyze_excavation_method(numerical_data)
+                if analysis:
+                    response_text += "\n" + analysis
+                recommendations.extend(recs)
         
-        # If no specific analysis was triggered, provide comprehensive document insights
+        # If no response yet and documents exist, provide comprehensive analysis
         if not response_text and context.get('processed_documents'):
             response_text = self._comprehensive_document_analysis(query, context['processed_documents'])
         
@@ -469,7 +548,7 @@ class TunnelSupportAgent(BaseGeotechnicalAgent):
             confidence=0.85 if response_text else 0.5,
             recommendations=recommendations,
             warnings=warnings,
-            data_used=numerical_data,
+            data_used=data_used,
             document_based=bool(context.get('processed_documents')),
             timestamp=datetime.now().isoformat()
         )
@@ -672,21 +751,32 @@ class SafetyChecklistAgent(BaseGeotechnicalAgent):
         warnings = []
         data_used = {}
         
-        # Extract data
-        numerical_data = self._extract_numerical_data(context)
+        # Check if user is asking for document summary
+        query_lower = query.lower()
+        summary_requested = any(keyword in query_lower for keyword in 
+                              ['summary', 'summarize', 'overview', 'what does', 
+                               'tell me about', 'explain the document', 'describe the document'])
         
-        # Generate appropriate safety analysis
-        if "checklist" in query.lower():
-            response_text = self._generate_safety_checklist(numerical_data)
-        elif "risk" in query.lower():
-            response_text, warns = self._perform_risk_assessment(numerical_data)
-            warnings.extend(warns)
-        elif "stability" in query.lower():
-            response_text, recs, warns = self._analyze_stability(numerical_data)
-            recommendations.extend(recs)
-            warnings.extend(warns)
+        # Always provide document summary if requested
+        if summary_requested and context.get('processed_documents'):
+            response_text = self.get_document_summary(context['processed_documents'])
         else:
-            response_text = self._general_safety_analysis(numerical_data)
+            # Extract data
+            numerical_data = self._extract_numerical_data(context)
+            data_used = numerical_data
+            
+            # Generate appropriate safety analysis
+            if "checklist" in query_lower:
+                response_text = self._generate_safety_checklist(numerical_data)
+            elif "risk" in query_lower:
+                response_text, warns = self._perform_risk_assessment(numerical_data)
+                warnings.extend(warns)
+            elif "stability" in query_lower:
+                response_text, recs, warns = self._analyze_stability(numerical_data)
+                recommendations.extend(recs)
+                warnings.extend(warns)
+            else:
+                response_text = self._general_safety_analysis(numerical_data)
         
         # Always add general safety recommendations
         recommendations.extend([
@@ -702,7 +792,7 @@ class SafetyChecklistAgent(BaseGeotechnicalAgent):
             confidence=0.90,
             recommendations=recommendations,
             warnings=warnings,
-            data_used=numerical_data,
+            data_used=data_used,
             document_based=bool(context.get('processed_documents')),
             timestamp=datetime.now().isoformat()
         )
@@ -914,9 +1004,27 @@ class GeotechnicalAgentOrchestrator:
         # First, check if query is asking for general information from documents
         query_lower = query.lower()
         
-        # If it's a general query, use the soil agent as default for document analysis
+        # Keywords that indicate document summary request
+        summary_keywords = ['summary', 'summarize', 'overview', 'what does', 
+                          'tell me about', 'explain the document', 'describe the document',
+                          'what is in', 'document content', 'document analysis']
+        
+        # If it's asking for document summary, use the agent with highest confidence
+        if any(keyword in query_lower for keyword in summary_keywords):
+            # Calculate confidence scores for each agent
+            scores = {}
+            for agent_type, agent in self.agents.items():
+                scores[agent_type] = agent.can_handle(query)
+            
+            # Select agent with highest confidence
+            best_agent_type = max(scores, key=scores.get)
+            selected_agent = self.agents[best_agent_type]
+            response = selected_agent.analyze(query, context)
+            response.confidence = 0.9
+            return response
+        
+        # For general queries, use the soil agent as default
         if any(word in query_lower for word in ['what', 'tell me', 'explain', 'describe', 'show me', 'information']):
-            # Use soil agent for general queries
             selected_agent = self.agents['soil']
             response = selected_agent.analyze(query, context)
             response.confidence = 0.9
