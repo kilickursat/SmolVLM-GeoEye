@@ -7,7 +7,7 @@ Advanced visualization engine for geotechnical data.
 Creates interactive charts and graphs from extracted data.
 
 Author: SmolVLM-GeoEye Team
-Version: 3.1.0
+Version: 3.2.0
 """
 
 import logging
@@ -274,30 +274,53 @@ class GeotechnicalVisualizationEngine:
         return fig
     
     def create_correlation_matrix(self, numerical_data: Dict[str, List[Any]]) -> go.Figure:
-        """Create correlation matrix for parameters with common depths"""
-        # Prepare data frame with aligned depths
-        depth_data = {}
+        """Create correlation matrix for parameters"""
+        # Create a unified DataFrame with all parameters
+        data_dict = {}
+        max_length = 0
         
+        # First, find the maximum number of values
         for param_type, values in numerical_data.items():
-            for v in values:
-                if hasattr(v, 'depth') and v.depth is not None:
-                    depth = round(v.depth, 1)  # Round to nearest 0.1m
-                    if depth not in depth_data:
-                        depth_data[depth] = {}
-                    depth_data[depth][param_type] = v.value
+            if values:
+                max_length = max(max_length, len(values))
         
-        if not depth_data:
+        if max_length == 0:
             return self._create_no_data_figure()
         
-        # Create DataFrame
-        df = pd.DataFrame.from_dict(depth_data, orient='index')
-        df = df.dropna(thresh=2)  # Keep rows with at least 2 values
+        # Build data dictionary with padding for shorter arrays
+        for param_type, values in numerical_data.items():
+            if values:
+                nums = [v.value for v in values if hasattr(v, 'value')]
+                if nums:
+                    # Pad shorter arrays with NaN
+                    padded = nums + [np.nan] * (max_length - len(nums))
+                    data_dict[param_type.replace('_', ' ').title()] = padded
         
-        if df.shape[1] < 2:
-            return self._create_no_data_figure()
+        if len(data_dict) < 2:
+            # Not enough parameters for correlation
+            fig = go.Figure()
+            fig.add_annotation(
+                text="At least 2 parameters needed for correlation analysis",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5,
+                showarrow=False,
+                font=dict(size=20, color="gray")
+            )
+            fig.update_layout(
+                xaxis_visible=False,
+                yaxis_visible=False,
+                plot_bgcolor='white',
+                height=400
+            )
+            return fig
         
-        # Calculate correlation
-        corr = df.corr()
+        # Create DataFrame and calculate correlation
+        df = pd.DataFrame(data_dict)
+        # Use 'pairwise' to handle NaN values properly
+        corr = df.corr(method='pearson', min_periods=1)
+        
+        # Replace NaN with 0 for visualization
+        corr = corr.fillna(0)
         
         # Create heatmap
         fig = go.Figure(data=go.Heatmap(
@@ -323,6 +346,15 @@ class GeotechnicalVisualizationEngine:
             width=700,
             height=700,
             plot_bgcolor='white'
+        )
+        
+        # Add note about correlation calculation
+        fig.add_annotation(
+            text="Note: Correlations calculated using available paired data",
+            xref="paper", yref="paper",
+            x=0.5, y=-0.15,
+            showarrow=False,
+            font=dict(size=12, color="gray")
         )
         
         return fig
@@ -444,6 +476,86 @@ class GeotechnicalVisualizationEngine:
         # Update axes
         fig.update_xaxes(gridcolor='lightgray')
         fig.update_yaxes(gridcolor='lightgray')
+        
+        return fig
+    
+    def create_comprehensive_dashboard(self, numerical_data: Dict[str, List[Any]]) -> go.Figure:
+        """Create comprehensive dashboard with multiple visualizations"""
+        # Check available data
+        has_spt = 'spt_values' in numerical_data and numerical_data['spt_values']
+        has_other_params = any(param != 'spt_values' and values 
+                             for param, values in numerical_data.items())
+        
+        if not has_spt and not has_other_params:
+            return self._create_no_data_figure()
+        
+        # Create subplots layout
+        if has_spt and has_other_params:
+            fig = make_subplots(
+                rows=2, cols=2,
+                subplot_titles=('SPT Profile', 'Parameter Statistics', 
+                              'Distributions', 'Data Summary'),
+                specs=[[{'rowspan': 2}, {'type': 'scatter'}],
+                      [None, {'type': 'table'}]],
+                vertical_spacing=0.15,
+                horizontal_spacing=0.15
+            )
+            
+            # Add SPT profile
+            spt_fig = self.create_spt_depth_profile(numerical_data)
+            for trace in spt_fig.data:
+                fig.add_trace(trace, row=1, col=1)
+            
+            # Add parameter statistics
+            param_stats = []
+            for param_type, values in numerical_data.items():
+                if values and param_type != 'spt_values':
+                    nums = [v.value for v in values if hasattr(v, 'value')]
+                    if nums:
+                        param_stats.append({
+                            'Parameter': param_type.replace('_', ' ').title(),
+                            'Mean': f"{np.mean(nums):.2f}",
+                            'Std Dev': f"{np.std(nums):.2f}",
+                            'Min': f"{min(nums):.2f}",
+                            'Max': f"{max(nums):.2f}"
+                        })
+            
+            if param_stats:
+                df = pd.DataFrame(param_stats)
+                for idx, row in df.iterrows():
+                    fig.add_trace(
+                        go.Scatter(
+                            x=[float(row['Min']), float(row['Mean']), float(row['Max'])],
+                            y=[row['Parameter']] * 3,
+                            mode='markers+lines',
+                            name=row['Parameter'],
+                            showlegend=False
+                        ),
+                        row=1, col=2
+                    )
+                
+                # Add summary table
+                fig.add_trace(
+                    go.Table(
+                        header=dict(values=list(df.columns)),
+                        cells=dict(values=[df[col] for col in df.columns])
+                    ),
+                    row=2, col=2
+                )
+        else:
+            # Single visualization
+            return self.create_multi_parameter_chart(numerical_data)
+        
+        # Update layout
+        fig.update_layout(
+            title={
+                'text': 'Geotechnical Data Dashboard',
+                'font': {'size': 24, 'color': '#2c3e50'}
+            },
+            height=800,
+            showlegend=False,
+            plot_bgcolor='white'
+        )
         
         return fig
     
