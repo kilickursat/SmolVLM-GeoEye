@@ -7,7 +7,7 @@ A comprehensive geotechnical engineering workflow application powered by SmolVLM
 Features document analysis, AI agents, visualization, and cost tracking.
 
 Author: SmolVLM-GeoEye Team
-Version: 3.1.0 - Production Release
+Version: 3.2.0 - Enhanced Release
 """
 
 import streamlit as st
@@ -57,7 +57,7 @@ st.set_page_config(
     menu_items={
         'Get Help': 'https://github.com/kilickursat/SmolVLM-GeoEye',
         'Report a bug': 'https://github.com/kilickursat/SmolVLM-GeoEye/issues',
-        'About': 'SmolVLM-GeoEye v3.1.0 - AI-Powered Geotechnical Engineering'
+        'About': 'SmolVLM-GeoEye v3.2.0 - AI-Powered Geotechnical Engineering'
     }
 )
 
@@ -180,6 +180,8 @@ def init_session_state():
         st.session_state.smolvlm_queries = 0
     if "system_health" not in st.session_state:
         st.session_state.system_health = {"status": "unknown"}
+    if "visualization_states" not in st.session_state:
+        st.session_state.visualization_states = {}
 
 # Call initialization immediately
 init_session_state()
@@ -309,15 +311,32 @@ class SmolVLMGeoEyeApp:
         
         image_base64 = base64.b64encode(image_data).decode('utf-8')
         
-        # Query SmolVLM
-        query = """Analyze this geotechnical engineering document. Extract and describe:
-        1. All numerical data with units (SPT values, bearing capacity, density, etc.)
-        2. Soil/rock properties and classifications
-        3. Test results and measurements
-        4. Engineering recommendations or design parameters
-        5. Safety factors or critical values
-        
-        Provide a detailed, professional analysis with all numerical values clearly identified."""
+        # Enhanced SmolVLM query for better structured extraction
+        query = """Analyze this geotechnical engineering document comprehensively. Please provide:
+
+1. **Document Summary**: Brief overview of what this document contains
+2. **Extracted Data**: List ALL numerical values with their units, including:
+   - SPT N-values (with depths if available)
+   - Bearing capacity values (specify if ultimate or allowable)
+   - Soil density, unit weight, moisture content
+   - Atterberg limits (LL, PL, PI)
+   - Strength parameters (cohesion, friction angle)
+   - Rock properties (RQD, UCS, GSI, mi)
+   - Permeability, void ratio, porosity
+   - Settlement values or predictions
+   - Modulus values (elastic, deformation)
+   - Groundwater levels or pressures
+   - Any other numerical parameters
+
+3. **Soil/Rock Classification**: Describe soil or rock types and their classifications
+4. **Test Results**: List all test types performed and their results
+5. **Engineering Recommendations**: Any design values or recommendations
+6. **Critical Findings**: Important observations or warnings
+
+Format numerical data as: "Parameter: value unit (at depth if applicable)"
+Example: "SPT N-value: 15 blows/ft at 3.0m depth"
+
+Provide a thorough, professional analysis suitable for geotechnical engineers."""
         
         input_data = {
             "image_data": image_base64,
@@ -554,6 +573,7 @@ class SmolVLMGeoEyeApp:
                 st.session_state.processed_documents = {}
                 st.session_state.total_cost = 0.0
                 st.session_state.smolvlm_queries = 0
+                st.session_state.visualization_states = {}
                 self.cache_manager.clear()
                 st.success("All data cleared!")
                 st.rerun()
@@ -690,21 +710,42 @@ class SmolVLMGeoEyeApp:
                 st.plotly_chart(fig, use_container_width=True)
                 
                 # Additional visualizations
-                col1, col2 = st.columns(2)
+                st.subheader("Additional Visualizations")
+                col1, col2, col3 = st.columns(3)
                 
                 with col1:
-                    if st.button("📊 Parameter Distribution"):
-                        dist_fig = self.visualization_engine.create_parameter_distribution(
-                            doc_data["numerical_data"]
-                        )
-                        st.plotly_chart(dist_fig, use_container_width=True)
+                    if st.button("📊 Parameter Distribution", key="btn_dist"):
+                        st.session_state.visualization_states['show_distribution'] = True
                 
                 with col2:
-                    if st.button("🔗 Correlation Matrix"):
-                        corr_fig = self.visualization_engine.create_correlation_matrix(
-                            doc_data["numerical_data"]
-                        )
-                        st.plotly_chart(corr_fig, use_container_width=True)
+                    if st.button("🔗 Correlation Matrix", key="btn_corr"):
+                        st.session_state.visualization_states['show_correlation'] = True
+                
+                with col3:
+                    if st.button("📊 Comprehensive Dashboard", key="btn_dash"):
+                        st.session_state.visualization_states['show_dashboard'] = True
+                
+                # Show selected visualizations
+                if st.session_state.visualization_states.get('show_distribution', False):
+                    st.subheader("Parameter Distribution")
+                    dist_fig = self.visualization_engine.create_parameter_distribution(
+                        doc_data["numerical_data"]
+                    )
+                    st.plotly_chart(dist_fig, use_container_width=True)
+                
+                if st.session_state.visualization_states.get('show_correlation', False):
+                    st.subheader("Parameter Correlation Matrix")
+                    corr_fig = self.visualization_engine.create_correlation_matrix(
+                        doc_data["numerical_data"]
+                    )
+                    st.plotly_chart(corr_fig, use_container_width=True)
+                
+                if st.session_state.visualization_states.get('show_dashboard', False):
+                    st.subheader("Comprehensive Dashboard")
+                    dash_fig = self.visualization_engine.create_comprehensive_dashboard(
+                        doc_data["numerical_data"]
+                    )
+                    st.plotly_chart(dash_fig, use_container_width=True)
                 
                 # Export options
                 if st.checkbox("Export visualization"):
