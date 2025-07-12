@@ -1,6 +1,6 @@
 # 🏗️ SmolVLM-GeoEye: Production-Ready Geotechnical Engineering AI
 
-> **Version 3.1.0** - Enterprise-grade AI workflow for geotechnical engineering powered by SmolVLM Vision-Language Model
+> **Version 3.2.0** - Enterprise-grade AI workflow for geotechnical engineering powered by SmolVLM Vision-Language Model
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
@@ -10,9 +10,18 @@
 
 SmolVLM-GeoEye is a production-ready, AI-powered geotechnical engineering application that leverages the SmolVLM Vision-Language Model for advanced document analysis, data extraction, and engineering insights. The system provides a complete workflow from document ingestion to actionable engineering recommendations.
 
+### ✨ Latest Updates (v3.2.0)
+
+🔥 **Major Data Extraction Improvements**:
+- **Enhanced SmolVLM Integration**: Now requests structured JSON output for reliable data extraction
+- **Robust Parsing**: Multiple fallback mechanisms for data extraction (JSON → regex → text analysis)
+- **Improved Agent Intelligence**: AI agents now receive properly structured data for analysis
+- **Better Error Handling**: Comprehensive validation and user feedback
+- **Real-time Feedback**: Shows extraction results and data counts in UI
+
 ### 🎯 Key Features
 
-- **🤖 SmolVLM Vision AI**: Advanced image analysis for geotechnical documents
+- **🤖 SmolVLM Vision AI**: Advanced image analysis for geotechnical documents with structured JSON output
 - **📊 Intelligent Data Extraction**: Automatic extraction of SPT values, bearing capacity, soil properties
 - **🧠 AI Engineering Agents**: Specialized agents for soil analysis, tunnel engineering, and safety assessment
 - **📈 Advanced Visualizations**: Interactive charts and 3D soil profiles
@@ -84,7 +93,13 @@ MAX_WORKERS=10
 MIN_WORKERS=0
 ```
 
-### 3. Deploy with Docker
+### 3. Test Installation
+```bash
+# Run comprehensive test suite
+python test_smolvlm_extraction.py
+```
+
+### 4. Deploy with Docker
 ```bash
 # Make deployment script executable
 chmod +x deploy-production.sh
@@ -93,7 +108,7 @@ chmod +x deploy-production.sh
 ./deploy-production.sh production
 ```
 
-### 4. Access Application
+### 5. Access Application
 - **Main App**: http://localhost:8501
 - **API Docs**: http://localhost:8000/docs
 - **Monitoring**: http://localhost:3000 (Grafana)
@@ -113,6 +128,9 @@ streamlit run app.py
 ```bash
 # Install test dependencies
 pip install pytest pytest-cov
+
+# Run comprehensive test suite
+python test_smolvlm_extraction.py
 
 # Run unit tests
 pytest tests/ -v
@@ -268,6 +286,20 @@ The system automatically extracts:
 
 ### Common Issues
 
+#### SmolVLM Data Extraction Not Working
+```bash
+# Run extraction test
+python test_smolvlm_extraction.py
+
+# Check extraction results
+python -c "
+from modules.data_extraction import EnhancedGeotechnicalDataExtractor
+extractor = EnhancedGeotechnicalDataExtractor()
+result = extractor.extract_numerical_data_from_text('SPT N-value: 15 at 3m depth')
+print(f'Extracted: {len(result)} parameters')
+"
+```
+
 #### RunPod Connection Failed
 ```bash
 # Check endpoint status
@@ -344,7 +376,19 @@ This project is licensed under the GNU General Public License v3.0 - see [LICENS
 
 ## 📊 Changelog
 
-### v3.1.0 - Production Release (Current)
+### v3.2.0 - Enhanced Data Extraction (Current)
+- 🔥 **Major SmolVLM Integration Fixes**:
+  - Enhanced query to request structured JSON output
+  - Robust JSON parsing with multiple fallback mechanisms
+  - Improved agent integration with properly structured data
+  - Real-time extraction feedback and data counts
+  - Comprehensive error handling and user warnings
+- ✅ Comprehensive test suite (`test_smolvlm_extraction.py`)
+- ✅ Better UI feedback for extraction results
+- ✅ Enhanced chat interface with data validation
+- ✅ Fixed session state initialization issues
+
+### v3.1.0 - Production Release
 - ✅ Complete module architecture implementation
 - ✅ Enhanced data extraction with confidence scoring
 - ✅ AI agents for specialized analysis
