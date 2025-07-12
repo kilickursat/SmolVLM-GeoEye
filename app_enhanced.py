@@ -23,6 +23,7 @@ from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import asdict
 import logging
 from pathlib import Path
+import re
 
 # Third-party imports
 from PIL import Image
@@ -73,7 +74,7 @@ init_session_state()
 # Import all custom modules after session state is initialized
 from modules.config import get_config, Config, ProductionConfig
 from modules.smolvlm_client import EnhancedRunPodClient
-from modules.data_extraction import EnhancedGeotechnicalDataExtractor
+from modules.data_extraction import EnhancedGeotechnicalDataExtractor, ExtractedValue
 from modules.visualization import GeotechnicalVisualizationEngine
 from modules.agents import GeotechnicalAgentOrchestrator
 from modules.database import DatabaseManager
@@ -301,7 +302,7 @@ class SmolVLMGeoEyeApp:
         return result
     
     def process_image_file(self, uploaded_file, doc_id: int) -> Dict[str, Any]:
-        """Process image file with SmolVLM"""
+        """Process image file with SmolVLM and extract structured data"""
         # Convert image
         image = Image.open(uploaded_file)
         if image.mode != 'RGB':
@@ -316,32 +317,89 @@ class SmolVLMGeoEyeApp:
         
         image_base64 = base64.b64encode(image_data).decode('utf-8')
         
-        # Enhanced SmolVLM query for better structured extraction
-        query = """Analyze this geotechnical engineering document comprehensively. Please provide:
+        # Enhanced SmolVLM query specifically requesting structured JSON output
+        query = """Analyze this geotechnical engineering document and extract ALL numerical data in JSON format.
 
-1. **Document Summary**: Brief overview of what this document contains
-2. **Extracted Data**: List ALL numerical values with their units, including:
-   - SPT N-values (with depths if available)
-   - Bearing capacity values (specify if ultimate or allowable)
-   - Soil density, unit weight, moisture content
-   - Atterberg limits (LL, PL, PI)
-   - Strength parameters (cohesion, friction angle)
-   - Rock properties (RQD, UCS, GSI, mi)
-   - Permeability, void ratio, porosity
-   - Settlement values or predictions
-   - Modulus values (elastic, deformation)
-   - Groundwater levels or pressures
-   - Any other numerical parameters
+REQUIREMENTS:
+1. Extract ALL numerical values with their units and context
+2. Format the response as valid JSON with the structure below
+3. Include both analysis text and structured data
 
-3. **Soil/Rock Classification**: Describe soil or rock types and their classifications
-4. **Test Results**: List all test types performed and their results
-5. **Engineering Recommendations**: Any design values or recommendations
-6. **Critical Findings**: Important observations or warnings
+Expected JSON structure:
+{
+  "document_analysis": "Comprehensive analysis of the document content...",
+  "extracted_data": {
+    "spt_values": [
+      {"value": 15, "unit": "blows/ft", "depth": 3.0, "depth_unit": "m", "context": "Standard Penetration Test at 3m depth", "confidence": 0.9}
+    ],
+    "bearing_capacity": [
+      {"value": 150, "unit": "kPa", "context": "Allowable bearing capacity", "confidence": 0.9}
+    ],
+    "density": [
+      {"value": 1.8, "unit": "g/cm³", "context": "Dry density", "confidence": 0.8}
+    ],
+    "moisture_content": [
+      {"value": 25, "unit": "%", "context": "Natural moisture content", "confidence": 0.8}
+    ],
+    "cohesion": [
+      {"value": 20, "unit": "kPa", "context": "Undrained cohesion", "confidence": 0.8}
+    ],
+    "friction_angle": [
+      {"value": 32, "unit": "°", "context": "Internal friction angle", "confidence": 0.8}
+    ],
+    "liquid_limit": [
+      {"value": 45, "unit": "%", "context": "Liquid limit", "confidence": 0.8}
+    ],
+    "plastic_limit": [
+      {"value": 20, "unit": "%", "context": "Plastic limit", "confidence": 0.8}
+    ],
+    "plasticity_index": [
+      {"value": 25, "unit": "", "context": "Plasticity index", "confidence": 0.8}
+    ],
+    "permeability": [
+      {"value": 1e-7, "unit": "m/s", "context": "Hydraulic conductivity", "confidence": 0.7}
+    ],
+    "settlement": [
+      {"value": 25, "unit": "mm", "context": "Total settlement", "confidence": 0.7}
+    ],
+    "rqd": [
+      {"value": 75, "unit": "%", "context": "Rock Quality Designation", "confidence": 0.8}
+    ],
+    "ucs": [
+      {"value": 50, "unit": "MPa", "context": "Unconfined compressive strength", "confidence": 0.8}
+    ],
+    "modulus": [
+      {"value": 25, "unit": "MPa", "context": "Elastic modulus", "confidence": 0.7}
+    ],
+    "void_ratio": [
+      {"value": 0.8, "unit": "", "context": "Void ratio", "confidence": 0.7}
+    ],
+    "porosity": [
+      {"value": 40, "unit": "%", "context": "Porosity", "confidence": 0.7}
+    ],
+    "poisson_ratio": [
+      {"value": 0.3, "unit": "", "context": "Poisson's ratio", "confidence": 0.7}
+    ],
+    "gsi": [
+      {"value": 65, "unit": "", "context": "Geological Strength Index", "confidence": 0.8}
+    ],
+    "mi": [
+      {"value": 10, "unit": "", "context": "Intact rock parameter", "confidence": 0.7}
+    ]
+  },
+  "soil_classification": "Detailed soil/rock classification and properties",
+  "test_methods": ["List of identified test methods"],
+  "recommendations": ["Engineering recommendations from the document"],
+  "warnings": ["Any warnings or critical findings"]
+}
 
-Format numerical data as: "Parameter: value unit (at depth if applicable)"
-Example: "SPT N-value: 15 blows/ft at 3.0m depth"
-
-Provide a thorough, professional analysis suitable for geotechnical engineers."""
+IMPORTANT: 
+- Only include parameters that are actually present in the document
+- Extract ALL numerical values you can identify
+- Be thorough and extract everything - this is critical for engineering analysis
+- Provide high confidence values for clearly visible data
+- Include depth information whenever available
+- Format as valid JSON only - no additional text outside the JSON structure"""
         
         input_data = {
             "image_data": image_base64,
@@ -389,8 +447,8 @@ Provide a thorough, professional analysis suitable for geotechnical engineers.""
             else:
                 raise Exception(f"SmolVLM error: {result.get('error', 'Unknown error')}")
         
-        # Extract numerical data
-        extracted_data = self.data_extractor.extract_numerical_data_from_text(response)
+        # Parse the structured JSON response
+        extracted_data = self._parse_smolvlm_json_response(response)
         
         # Save extracted data
         if extracted_data:
@@ -407,6 +465,64 @@ Provide a thorough, professional analysis suitable for geotechnical engineers.""
             "numerical_data": extracted_data,
             "timestamp": datetime.now().isoformat()
         }
+    
+    def _parse_smolvlm_json_response(self, response: str) -> Dict[str, List[ExtractedValue]]:
+        """Parse SmolVLM JSON response and convert to ExtractedValue objects"""
+        extracted_data = {}
+        
+        try:
+            # Try to extract JSON from the response
+            json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(0)
+                data = json.loads(json_str)
+                
+                # Extract the extracted_data section
+                if 'extracted_data' in data:
+                    for param_type, values in data['extracted_data'].items():
+                        if values:  # Only process non-empty lists
+                            extracted_values = []
+                            for item in values:
+                                if isinstance(item, dict):
+                                    extracted_value = ExtractedValue(
+                                        value=float(item.get('value', 0)),
+                                        unit=item.get('unit', ''),
+                                        context=item.get('context', ''),
+                                        confidence=float(item.get('confidence', 0.7)),
+                                        parameter_type=param_type,
+                                        depth=float(item.get('depth')) if item.get('depth') is not None else None,
+                                        depth_unit=item.get('depth_unit')
+                                    )
+                                    extracted_values.append(extracted_value)
+                            
+                            if extracted_values:
+                                extracted_data[param_type] = extracted_values
+                
+                logger.info(f"Successfully parsed JSON response with {len(extracted_data)} parameter types")
+                
+        except (json.JSONDecodeError, ValueError, KeyError) as e:
+            logger.warning(f"Failed to parse JSON response: {e}")
+            # Fallback to regex extraction
+            extracted_data = self.data_extractor.extract_numerical_data_from_text(response)
+            logger.info(f"Fallback regex extraction found {len(extracted_data)} parameter types")
+        
+        # If still no data, try a more aggressive text extraction
+        if not extracted_data:
+            logger.warning("No structured data found, attempting aggressive text extraction")
+            # Extract document analysis text for processing
+            analysis_text = response
+            if '{' in response and '}' in response:
+                try:
+                    json_match = re.search(r'"document_analysis":\s*"([^"]+)"', response)
+                    if json_match:
+                        analysis_text = json_match.group(1)
+                except:
+                    pass
+            
+            extracted_data = self.data_extractor.extract_numerical_data_from_text(analysis_text)
+            logger.info(f"Aggressive text extraction found {len(extracted_data)} parameter types")
+        
+        return extracted_data
     
     def process_pdf_file(self, uploaded_file, doc_id: int) -> Dict[str, Any]:
         """Process PDF file"""
@@ -547,7 +663,11 @@ Provide a thorough, professional analysis suitable for geotechnical engineers.""
                             try:
                                 result = self.process_uploaded_file(uploaded_file)
                                 st.session_state.processed_documents[uploaded_file.name] = result
-                                st.success(f"✅ {uploaded_file.name} processed successfully")
+                                
+                                # Show success with extracted data count
+                                data_count = sum(len(v) for v in result.get('numerical_data', {}).values())
+                                st.success(f"✅ {uploaded_file.name} processed successfully - {data_count} values extracted")
+                                
                             except Exception as e:
                                 st.error(f"❌ Error processing {uploaded_file.name}: {str(e)}")
             
@@ -568,8 +688,14 @@ Provide a thorough, professional analysis suitable for geotechnical engineers.""
                         numerical_data = doc_data.get("numerical_data", {})
                         if numerical_data:
                             st.write("**Extracted Parameters:**")
+                            total_values = 0
                             for param, values in numerical_data.items():
-                                st.write(f"- {param}: {len(values)} values")
+                                count = len(values)
+                                total_values += count
+                                st.write(f"- {param}: {count} values")
+                            st.write(f"**Total: {total_values} extracted values**")
+                        else:
+                            st.write("No numerical data extracted")
             
             st.divider()
             
@@ -619,6 +745,14 @@ Provide a thorough, professional analysis suitable for geotechnical engineers.""
                         "domain": "geotechnical_engineering"
                     }
                     
+                    # Debug: Check if we have extracted data
+                    total_extracted = sum(
+                        len(doc.get('numerical_data', {})) for doc in st.session_state.processed_documents.values()
+                    )
+                    
+                    if total_extracted == 0 and st.session_state.processed_documents:
+                        st.warning("⚠️ No numerical data was extracted from uploaded documents. The AI analysis may be limited.")
+                    
                     # Get agent response
                     agent_response = self.agent_orchestrator.route_query(prompt, context)
                     
@@ -631,6 +765,15 @@ Provide a thorough, professional analysis suitable for geotechnical engineers.""
                     
                     if agent_response.warnings:
                         st.warning("**Warnings:**\n" + "\n".join(f"- {w}" for w in agent_response.warnings))
+                    
+                    # Show data used in analysis
+                    if agent_response.data_used:
+                        with st.expander("📊 Data Used in Analysis"):
+                            data_summary = {}
+                            for param_type, values in agent_response.data_used.items():
+                                if values:
+                                    data_summary[param_type] = len(values)
+                            st.json(data_summary)
                     
                     # Add to messages
                     st.session_state.messages.append({
@@ -698,11 +841,41 @@ Provide a thorough, professional analysis suitable for geotechnical engineers.""
                         if st.checkbox(f"Show all {param_type} values", key=f"show_{param_type}"):
                             df = pd.DataFrame([asdict(v) for v in numerical_data[param_type]])
                             st.dataframe(df, use_container_width=True)
+            else:
+                st.warning("⚠️ No numerical data was extracted from this document. Please ensure the document contains clear geotechnical parameters with numerical values.")
             
             # AI Analysis
             if doc_data.get("document_type") == "image" and "content" in doc_data:
                 st.subheader("🤖 SmolVLM Analysis")
-                st.write(doc_data["content"].get("response", "No analysis available"))
+                raw_response = doc_data["content"].get("response", "No analysis available")
+                
+                # Try to parse and display structured response
+                try:
+                    json_match = re.search(r'\{.*\}', raw_response, re.DOTALL)
+                    if json_match:
+                        json_data = json.loads(json_match.group(0))
+                        
+                        if 'document_analysis' in json_data:
+                            st.write("**Document Analysis:**")
+                            st.write(json_data['document_analysis'])
+                        
+                        if 'soil_classification' in json_data:
+                            st.write("**Soil Classification:**")
+                            st.write(json_data['soil_classification'])
+                        
+                        if 'recommendations' in json_data and json_data['recommendations']:
+                            st.write("**Recommendations:**")
+                            for rec in json_data['recommendations']:
+                                st.write(f"- {rec}")
+                        
+                        if 'warnings' in json_data and json_data['warnings']:
+                            st.write("**Warnings:**")
+                            for warn in json_data['warnings']:
+                                st.write(f"- {warn}")
+                    else:
+                        st.write(raw_response)
+                except:
+                    st.write(raw_response)
     
     def render_visualization_tab(self):
         """Render visualization tab"""
