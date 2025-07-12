@@ -31,21 +31,7 @@ import pandas as pd
 import numpy as np
 from dotenv import load_dotenv
 
-# Import all custom modules
-from modules.config import get_config, Config, ProductionConfig
-from modules.smolvlm_client import EnhancedRunPodClient
-from modules.data_extraction import EnhancedGeotechnicalDataExtractor
-from modules.visualization import GeotechnicalVisualizationEngine
-from modules.agents import GeotechnicalAgentOrchestrator
-from modules.database import DatabaseManager
-from modules.cache import CacheManager, DocumentCache, MetricsCache
-from modules.monitoring import MetricsCollector, create_monitoring_middleware
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# Load environment variables
+# Load environment variables first
 load_dotenv()
 
 # Configure Streamlit page
@@ -60,6 +46,43 @@ st.set_page_config(
         'About': 'SmolVLM-GeoEye v3.2.0 - AI-Powered Geotechnical Engineering'
     }
 )
+
+# Initialize session state IMMEDIATELY after page config
+def init_session_state():
+    """Initialize all session state variables"""
+    if "initialized" not in st.session_state:
+        st.session_state.initialized = False
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+    if "processed_documents" not in st.session_state:
+        st.session_state.processed_documents = {}
+    if "async_jobs" not in st.session_state:
+        st.session_state.async_jobs = {}
+    if "total_cost" not in st.session_state:
+        st.session_state.total_cost = 0.0
+    if "smolvlm_queries" not in st.session_state:
+        st.session_state.smolvlm_queries = 0
+    if "system_health" not in st.session_state:
+        st.session_state.system_health = {"status": "unknown"}
+    if "visualization_states" not in st.session_state:
+        st.session_state.visualization_states = {}
+
+# Call initialization IMMEDIATELY
+init_session_state()
+
+# Import all custom modules after session state is initialized
+from modules.config import get_config, Config, ProductionConfig
+from modules.smolvlm_client import EnhancedRunPodClient
+from modules.data_extraction import EnhancedGeotechnicalDataExtractor
+from modules.visualization import GeotechnicalVisualizationEngine
+from modules.agents import GeotechnicalAgentOrchestrator
+from modules.database import DatabaseManager
+from modules.cache import CacheManager, DocumentCache, MetricsCache
+from modules.monitoring import MetricsCollector, create_monitoring_middleware
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Enhanced CSS styling
 st.markdown("""
@@ -163,34 +186,16 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Initialize session state BEFORE class instantiation
-def init_session_state():
-    """Initialize all session state variables"""
-    if "initialized" not in st.session_state:
-        st.session_state.initialized = False
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-    if "processed_documents" not in st.session_state:
-        st.session_state.processed_documents = {}
-    if "async_jobs" not in st.session_state:
-        st.session_state.async_jobs = {}
-    if "total_cost" not in st.session_state:
-        st.session_state.total_cost = 0.0
-    if "smolvlm_queries" not in st.session_state:
-        st.session_state.smolvlm_queries = 0
-    if "system_health" not in st.session_state:
-        st.session_state.system_health = {"status": "unknown"}
-    if "visualization_states" not in st.session_state:
-        st.session_state.visualization_states = {}
-
-# Call initialization immediately
-init_session_state()
 
 class SmolVLMGeoEyeApp:
     """Main application class"""
     
     def __init__(self):
         """Initialize the application with all components"""
+        # Ensure session state is initialized
+        if not hasattr(st.session_state, 'smolvlm_queries'):
+            st.session_state.smolvlm_queries = 0
+            
         # Load configuration - use ProductionConfig for production, otherwise default Config
         if os.getenv("ENVIRONMENT") == "production":
             self.config = get_config(ProductionConfig)
@@ -360,9 +365,17 @@ Provide a thorough, professional analysis suitable for geotechnical engineers.""
                 response = result["response"]
                 self.cache_manager.set(cache_key, response, ttl=7200)
                 
-                # Update costs
-                st.session_state.total_cost += result.get("metrics", {}).get("cost_estimate", 0)
-                st.session_state.smolvlm_queries += 1
+                # Update costs with safety check
+                if hasattr(st.session_state, 'total_cost'):
+                    st.session_state.total_cost += result.get("metrics", {}).get("cost_estimate", 0)
+                else:
+                    st.session_state.total_cost = result.get("metrics", {}).get("cost_estimate", 0)
+                
+                # Update query count with safety check
+                if hasattr(st.session_state, 'smolvlm_queries'):
+                    st.session_state.smolvlm_queries += 1
+                else:
+                    st.session_state.smolvlm_queries = 1
                 
                 # Save AI analysis
                 self.db_manager.save_ai_analysis(
@@ -491,22 +504,25 @@ Provide a thorough, professional analysis suitable for geotechnical engineers.""
                 )
         
         with col2:
-            # SmolVLM Usage
+            # SmolVLM Usage - with safety check
+            queries = getattr(st.session_state, 'smolvlm_queries', 0)
             st.markdown(
-                f'<div class="smolvlm-indicator">🤖 SmolVLM<br>{st.session_state.smolvlm_queries} queries</div>',
+                f'<div class="smolvlm-indicator">🤖 SmolVLM<br>{queries} queries</div>',
                 unsafe_allow_html=True
             )
         
         with col3:
-            # Cost Tracker
+            # Cost Tracker - with safety check
+            total_cost = getattr(st.session_state, 'total_cost', 0.0)
             st.markdown(
-                f'<div class="cost-tracker">💰 Cost<br>${st.session_state.total_cost:.4f}</div>',
+                f'<div class="cost-tracker">💰 Cost<br>${total_cost:.4f}</div>',
                 unsafe_allow_html=True
             )
         
         with col4:
-            # Documents Processed
-            doc_count = len(st.session_state.processed_documents)
+            # Documents Processed - with safety check
+            processed_docs = getattr(st.session_state, 'processed_documents', {})
+            doc_count = len(processed_docs)
             st.markdown(
                 f'<div class="metric-card">📄 Documents<br>{doc_count}</div>',
                 unsafe_allow_html=True
@@ -835,8 +851,8 @@ Provide a thorough, professional analysis suitable for geotechnical engineers.""
             # Executive Summary
             report += "## Executive Summary\n\n"
             report += f"- Documents Analyzed: {len(st.session_state.processed_documents)}\n"
-            report += f"- SmolVLM Queries: {st.session_state.smolvlm_queries}\n"
-            report += f"- Total Cost: ${st.session_state.total_cost:.4f}\n\n"
+            report += f"- SmolVLM Queries: {getattr(st.session_state, 'smolvlm_queries', 0)}\n"
+            report += f"- Total Cost: ${getattr(st.session_state, 'total_cost', 0.0):.4f}\n\n"
             
             # Document Summary
             report += "## Document Analysis Summary\n\n"
